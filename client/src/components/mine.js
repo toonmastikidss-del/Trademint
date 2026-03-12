@@ -30,7 +30,8 @@ const Mine = () => {
             headers: { Authorization: `Bearer ${token}` }
           });
           
-          const user = res.data.user;
+          // Check if response data exists
+          const user = res.data?.user || savedUser;
           
           // Calculate UID
           let calculatedUid = '------';
