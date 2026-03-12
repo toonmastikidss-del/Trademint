@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import { API_CONFIG } from '../config/apiConfig';
 import QRManagement from './components/QRManagement';
 import { 
   Users, CreditCard, Landmark, History, Search, 
@@ -96,7 +97,7 @@ const AdminPanel = () => {
       setLoadingTasks(true);
       const adminToken = localStorage.getItem('adminToken');
       
-      const response = await axios.get('http://localhost:5000/api/task', {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/task`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -122,27 +123,27 @@ const AdminPanel = () => {
       const headers = { 'Authorization': `Bearer ${adminToken}` };
       
       // Fetch all data in parallel with better error handling
-      const depositsRes = await axios.get('http://localhost:5000/api/deposit/all', { headers }).catch(err => {
+      const depositsRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/all`, { headers }).catch(err => {
         console.error('Failed to fetch deposits:', err.response?.data || err.message);
         return { data: [] };
       });
       
-      const withdrawalsRes = await axios.get('http://localhost:5000/api/withdrawal/all', { headers }).catch(err => {
+      const withdrawalsRes = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal/all`, { headers }).catch(err => {
         console.error('Failed to fetch withdrawals:', err.response?.data || err.message);
         return { data: [] };
       });
       
-      const banksRes = await axios.get('http://localhost:5000/api/bank/all', { headers }).catch(err => {
+      const banksRes = await axios.get(`${API_CONFIG.BASE_URL}/api/bank/all`, { headers }).catch(err => {
         console.error('Failed to fetch banks:', err.response?.data || err.message);
         return { data: [] };
       });
       
-      const usersRes = await axios.get('http://localhost:5000/api/admin/users', { headers }).catch(err => {
+      const usersRes = await axios.get(`${API_CONFIG.BASE_URL}/api/admin/users`, { headers }).catch(err => {
         console.error('Failed to fetch users:', err.response?.data || err.message);
         return { data: { users: [] } };
       });
       
-      const kycRes = await axios.get('http://localhost:5000/api/kyc/all', { headers }).catch(err => {
+      const kycRes = await axios.get(`${API_CONFIG.BASE_URL}/api/kyc/all`, { headers }).catch(err => {
         console.error('Failed to fetch KYC:', err.response?.data || err.message);
         return { data: [] };
       });
@@ -241,7 +242,7 @@ const AdminPanel = () => {
       setLoadingUserTasks(true);
       const adminToken = localStorage.getItem('adminToken');
       
-      const response = await axios.get('http://localhost:5000/api/task/user-tasks', {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/task/user-tasks`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -277,7 +278,7 @@ const AdminPanel = () => {
       }
       
       console.log('Attempting to fetch deposits with admin token...');
-      const response = await axios.get('http://localhost:5000/api/deposit', {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -403,7 +404,7 @@ const AdminPanel = () => {
     setLoadingBankRequests(true);
     try {
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/bank/all', {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/bank/all`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -479,7 +480,7 @@ const AdminPanel = () => {
   const updateBankStatus = async (bankId, status) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.put(`http://localhost:5000/api/bank/${bankId}/status`, 
+      const response = await axios.put(`${API_CONFIG.BASE_URL}/api/bank/${bankId}/status`, 
         { status },
         {
           headers: {
@@ -520,7 +521,7 @@ const AdminPanel = () => {
   const fetchUsers = async () => {
     try {
       // Try to fetch real user data from backend
-      const res = await axios.get('http://localhost:5000/api/admin/users');
+      const res = await axios.get(`${API_CONFIG.BASE_URL}/api/admin/users`);
       setUsers(res.data);
     } catch (err) {
       console.error('Error fetching users:', err);
@@ -654,7 +655,7 @@ const AdminPanel = () => {
 
   const handleUserAction = async (userId, action) => {
     try {
-      const res = await axios.post('http://localhost:5000/api/admin/user-action', {
+      const res = await axios.post(`${API_CONFIG.BASE_URL}/api/admin/user-action`, {
         userId,
         action
       });
@@ -674,7 +675,7 @@ const AdminPanel = () => {
     try {
       // Fetch real bank details from the bank_db
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.get(`http://localhost:5000/api/bank/user/${user._id}`, {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/bank/user/${user._id}`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -683,7 +684,7 @@ const AdminPanel = () => {
       const realBankDetails = response.data.bank;
       
       // Fetch complete transaction history from the new endpoint
-      const transactionResponse = await axios.get(`http://localhost:5000/api/admin/user-transactions/${user._id}`, {
+      const transactionResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/admin/user-transactions/${user._id}`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -759,7 +760,7 @@ const AdminPanel = () => {
       setLoadingQuantifyHistory(true);
       const adminToken = localStorage.getItem('adminToken');
       
-      const response = await axios.get(`http://localhost:5000/api/quantify/admin/history/${userId}`, {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/admin/history/${userId}`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -778,7 +779,7 @@ const AdminPanel = () => {
   const handleCreateTask = async () => {
     try {
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.post('http://localhost:5000/api/task', taskForm, {
+      const response = await axios.post(`${API_CONFIG.BASE_URL}/api/task`, taskForm, {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
           'Content-Type': 'application/json'
@@ -798,7 +799,7 @@ const AdminPanel = () => {
   const handleUpdateTask = async () => {
     try {
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.put(`http://localhost:5000/api/task/${editingTask._id}`, taskForm, {
+      const response = await axios.put(`${API_CONFIG.BASE_URL}/api/task/${editingTask._id}`, taskForm, {
         headers: {
           'Authorization': `Bearer ${adminToken}`,
           'Content-Type': 'application/json'
@@ -821,7 +822,7 @@ const AdminPanel = () => {
     
     try {
       const adminToken = localStorage.getItem('adminToken');
-      await axios.delete(`http://localhost:5000/api/task/${taskId}`, {
+      await axios.delete(`${API_CONFIG.BASE_URL}/api/task/${taskId}`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -838,7 +839,7 @@ const AdminPanel = () => {
   const handleToggleTaskStatus = async (taskId) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.put(`http://localhost:5000/api/task/${taskId}/toggle`, {}, {
+      const response = await axios.put(`${API_CONFIG.BASE_URL}/api/task/${taskId}/toggle`, {}, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -885,7 +886,7 @@ const AdminPanel = () => {
   const handleDepositAction = async (depositId, action) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.put(`http://localhost:5000/api/deposit/status/${depositId}`, 
+      const response = await axios.put(`${API_CONFIG.BASE_URL}/api/deposit/status/${depositId}`, 
         { action }, 
         { 
           headers: { 
@@ -924,7 +925,7 @@ const AdminPanel = () => {
     try {
       setLoadingWithdrawalRequests(true);
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/withdrawal', {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -944,7 +945,7 @@ const AdminPanel = () => {
     try {
       setLoadingApprovedWithdrawals(true);
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/withdrawal', {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -966,7 +967,7 @@ const AdminPanel = () => {
     try {
       setLoadingKycRequests(true);
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/kyc/pending', {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/kyc/pending`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -986,7 +987,7 @@ const AdminPanel = () => {
     try {
       setLoadingApprovedDeposits(true);
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.get('http://localhost:5000/api/deposit', {
+      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
@@ -1014,8 +1015,8 @@ const AdminPanel = () => {
       }
       
       const endpoint = action === 'approve' 
-        ? `http://localhost:5000/api/kyc/approve/${kycId}`
-        : `http://localhost:5000/api/kyc/reject/${kycId}`;
+        ? `${API_CONFIG.BASE_URL}/api/kyc/approve/${kycId}`
+        : `${API_CONFIG.BASE_URL}/api/kyc/reject/${kycId}`;
       
       const payload = action === 'reject' 
         ? { rejectionReason }
@@ -1057,7 +1058,7 @@ const AdminPanel = () => {
   const handleWithdrawalAction = async (requestId, action) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
-      const response = await axios.put(`http://localhost:5000/api/withdrawal/status/${requestId}`, 
+      const response = await axios.put(`${API_CONFIG.BASE_URL}/api/withdrawal/status/${requestId}`, 
         { action }, 
         { 
           headers: { 
@@ -1144,7 +1145,7 @@ const AdminPanel = () => {
     try {
       const adminToken = localStorage.getItem('adminToken');
       
-      const response = await axios.put(`http://localhost:5000/api/deposit/status/${depositId}`, 
+      const response = await axios.put(`${API_CONFIG.BASE_URL}/api/deposit/status/${depositId}`, 
         { action },
         {
           headers: {
@@ -1185,7 +1186,7 @@ const AdminPanel = () => {
 
   const fetchActiveChats = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/support/admin/active');
+      const res = await axios.get(`${API_CONFIG.BASE_URL}/api/support/admin/active`);
       setSupportChats(res.data);
       // Update selected chat if it exists
       if (selectedChat) {
@@ -1200,7 +1201,7 @@ const AdminPanel = () => {
   const handleAdminReply = async () => {
     if (!replyText.trim() || !selectedChat) return;
     try {
-      const res = await axios.post('http://localhost:5000/api/support/admin/reply', {
+      const res = await axios.post(`${API_CONFIG.BASE_URL}/api/support/admin/reply`, {
         chatId: selectedChat._id,
         text: replyText
       });
@@ -2396,12 +2397,12 @@ const AdminPanel = () => {
                 {deposit.paymentScreenshot ? (
                   <div className="flex flex-col items-center justify-center">
                     <img 
-                      src={`http://localhost:5000${deposit.paymentScreenshot}`} 
+                      src={`${API_CONFIG.BASE_URL}${deposit.paymentScreenshot}`} 
                       alt="Payment receipt" 
                       className="max-h-64 max-w-full rounded-lg object-contain border border-gray-700"
                     />
                     <a 
-                      href={`http://localhost:5000${deposit.paymentScreenshot}`} 
+                      href={`${API_CONFIG.BASE_URL}${deposit.paymentScreenshot}`} 
                       download
                       className="mt-4 px-4 py-2 bg-[#49bace] text-white text-xs font-bold rounded-xl hover:bg-[#3da0bb] transition-colors flex items-center gap-2"
                     >
