@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>QR Image Test</title>
+</head>
+<body>
+    <h1>Testing QR Image Display</h1>
+    
+    <h2>Direct Image URL Test:</h2>
+    <img id="testImage" src="" alt="Test QR Code" style="max-width: 300px; border: 2px solid red;">
+    
+    <h2>Database Image Path:</h2>
+    <p id="dbPath"></p>
+    
+    <h2>Full URL:</h2>
+    <p id="fullUrl"></p>
+    
+    <h2>Image Status:</h2>
+    <p id="status"></p>
+
+    <script>
+        // Get the image data from our test
+        const imagePath = '/api/qr/qrcodes/image/qr-1771856984951-827691844.png';
+        const fullUrl = 'http://localhost:5000' + imagePath;
+        
+        document.getElementById('dbPath').textContent = imagePath;
+        document.getElementById('fullUrl').textContent = fullUrl;
+        
+        const img = document.getElementById('testImage');
+        img.src = fullUrl;
+        
+        img.onload = function() {
+            document.getElementById('status').textContent = '✅ Image loaded successfully! Size: ' + img.naturalWidth + 'x' + img.naturalHeight;
+            document.getElementById('status').style.color = 'green';
+        };
+        
+        img.onerror = function() {
+            document.getElementById('status').textContent = '❌ Failed to load image';
+            document.getElementById('status').style.color = 'red';
+        };
+    </script>
+</body>
+</html>

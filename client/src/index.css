@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@keyframes scroll {
+    0% {
+      transform: translateY(0);
+    }
+    100% {
+      transform: translateY(-50%);
+    }
+  }
+  .animate-marquee1 {
+    /* display: inline-block; */
+    animation: scroll 30s linear infinite;
+  }

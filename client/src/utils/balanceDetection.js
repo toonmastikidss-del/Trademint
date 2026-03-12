@@ -1,0 +1,145 @@
+/**
+ * Balance Change Detection System
+ * Detects deposits and withdrawals in real-time across all pages
+ * Similar to Quantify page's balance change detection
+ */
+
+import axios from 'axios';
+
+// Store last known balance to detect changes
+let lastKnownBalance = null;
+let lastKnownQuantify = null;
+
+/**
+ * Initialize balance change detection
+ * Call this once when app starts
+ */
+export const initializeBalanceDetection = () => {
+  // Load initial balance
+  const savedUser = JSON.parse(localStorage.getItem('user'));
+  if (savedUser) {
+    lastKnownBalance = savedUser.balance || 0;
+    lastKnownQuantify = savedUser.quantify || 0;
+  }
+  
+  console.log('🔍 Balance detection initialized:', { 
+    lastKnownBalance, 
+    lastKnownQuantify 
+  });
+};
+
+/**
+ * Check for balance changes and update if needed
+ * Call this periodically or after transactions
+ */
+export const checkBalanceChange = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const savedUser = JSON.parse(localStorage.getItem('user'));
+    
+    if (!token || !savedUser) {
+      return;
+    }
+    
+    // Fetch fresh user data
+    const userResponse = await axios.get('http://localhost:5000/api/auth/user', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    const user = userResponse.data.user;
+    const currentBalance = user.balance || 0;
+    const currentQuantify = user.quantify || 0;
+    
+    // Check if balance changed
+    const balanceChanged = currentBalance !== lastKnownBalance;
+    const quantifyChanged = currentQuantify !== lastKnownQuantify;
+    
+    if (balanceChanged || quantifyChanged) {
+      console.log('💰 BALANCE CHANGE DETECTED!');
+      console.log('Old Balance:', lastKnownBalance);
+      console.log('New Balance:', currentBalance);
+      console.log('Difference:', (currentBalance - lastKnownBalance).toFixed(2));
+      
+      if (quantifyChanged) {
+        console.log('Old Quantify:', lastKnownQuantify);
+        console.log('New Quantify:', currentQuantify);
+      }
+      
+      // Update localStorage
+      localStorage.setItem('user', JSON.stringify(user));
+      
+      // Dispatch custom event for other components to listen
+      window.dispatchEvent(new CustomEvent('balance-updated', {
+        detail: {
+          oldBalance: lastKnownBalance,
+          newBalance: currentBalance,
+          oldQuantify: lastKnownQuantify,
+          newQuantify: currentQuantify,
+          balanceChanged,
+          quantifyChanged,
+          user
+        }
+      }));
+      
+      // Update last known values
+      lastKnownBalance = currentBalance;
+      lastKnownQuantify = currentQuantify;
+      
+      return {
+        detected: true,
+        oldBalance: lastKnownBalance,
+        newBalance: currentBalance,
+        oldQuantify: lastKnownQuantify,
+        newQuantify: currentQuantify
+      };
+    }
+    
+    return { detected: false };
+  } catch (error) {
+    console.error('❌ Error checking balance change:', error);
+    return { detected: false, error };
+  }
+};
+
+/**
+ * Force refresh user data (manual refresh)
+ */
+export const forceRefreshUserData = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const savedUser = JSON.parse(localStorage.getItem('user'));
+    
+    if (!token || !savedUser) {
+      return null;
+    }
+    
+    const userResponse = await axios.get('http://localhost:5000/api/auth/user', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    const user = userResponse.data.user;
+    localStorage.setItem('user', JSON.stringify(user));
+    
+    // Update last known values without triggering change event
+    lastKnownBalance = user.balance || 0;
+    lastKnownQuantify = user.quantify || 0;
+    
+    console.log('✅ Manual refresh completed');
+    return user;
+  } catch (error) {
+    console.error('❌ Error refreshing user data:', error);
+    return null;
+  }
+};
+
+/**
+ * Listen for balance updates from other tabs/windows
+ */
+export const enableCrossTabSync = () => {
+  window.addEventListener('storage', (event) => {
+    if (event.key === 'user') {
+      console.log('🔄 Cross-tab balance sync detected');
+      checkBalanceChange();
+    }
+  });
+};

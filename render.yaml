@@ -1,0 +1,31 @@
+services:
+  # Admin Panel Frontend (React)
+  - type: web
+    name: ufeg-admin-frontend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    staticPublishPath: ./client/build
+    envVars:
+      - key: NODE_ENV
+        value: production
+    domains:
+      - ufeg-admin.onrender.com
+
+  # Backend API Server
+  - type: web
+    name: ufeg-backend-api
+    env: node
+    buildCommand: npm install
+    startCommand: node server/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+    domains:
+      - ufeg-api.onrender.com
