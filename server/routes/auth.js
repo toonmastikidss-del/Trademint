@@ -100,6 +100,8 @@ router.get('/user', authenticateToken, async (req, res) => {
 // REGISTER
 router.post('/register', async (req, res) => {
     try {
+        console.log('📝 Registration attempt:', req.body);
+        
         const { phone, email, password, referralCode } = req.body;
 
         // Check if user already exists
@@ -107,8 +109,11 @@ router.post('/register', async (req, res) => {
         let user = await User.findOne(query);
 
         if (user) {
+            console.log('❌ User already exists:', query);
             return res.status(400).json({ message: 'User already exists' });
         }
+
+        console.log('✅ User does not exist, creating new user...');
 
         // Generate unique name
         let uniqueName = '';
@@ -176,8 +181,10 @@ router.post('/register', async (req, res) => {
         });
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
+        console.error('❌ Registration error:', err);
+        console.error('Error details:', err.message);
+        console.error('Stack trace:', err.stack);
+        res.status(500).json({ message: 'Server error', error: err.message });
     }
 });
 
