@@ -23,14 +23,14 @@ const Deposit = () => {
   const [selectedChannel, setSelectedChannel] = useState('UPI-QR (600-50K)')
   const [amount, setAmount] = useState('600')
   const [userData, setUserData] = useState(() => {
-    const savedUser = JSON.parse(localStorage.getItem('user'));
+    const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
     return {
       balance: (savedUser?.balance ?? 0),
       total_amount: (savedUser?.total_amount ?? 0)
     };
   });
   const [balance, setBalance] = useState(() => {
-    const savedUser = JSON.parse(localStorage.getItem('user'));
+    const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
     return (savedUser?.balance ?? 0).toFixed(2);
   })
   const [approvedDepositAmount, setApprovedDepositAmount] = useState(0);
@@ -39,7 +39,7 @@ const Deposit = () => {
 
   // Single function to refresh data (called manually after deposit/withdrawal)
   const refreshUserData = async () => {
-    const savedUser = JSON.parse(localStorage.getItem('user'));
+    const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
     const token = localStorage.getItem('token');
     
     if (savedUser && token) {
@@ -120,7 +120,7 @@ const Deposit = () => {
   // Initial load only - no continuous updates
   useEffect(() => {
     // Load initial data once
-    const savedUser = JSON.parse(localStorage.getItem('user'));
+    const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
     if (savedUser) {
       setBalance((savedUser?.balance ?? 0).toFixed(2));
       setUserData({
