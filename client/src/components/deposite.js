@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  ChevronLeft, RefreshCw, CreditCard, 
+import {
+  ChevronLeft, RefreshCw, CreditCard,
   Smartphone, Wallet, Info, ArrowRight,
   History, CheckCircle2
 } from 'lucide-react'
@@ -23,14 +23,14 @@ const Deposit = () => {
   const [selectedChannel, setSelectedChannel] = useState('UPI-QR (600-50K)')
   const [amount, setAmount] = useState('600')
   const [userData, setUserData] = useState(() => {
-    const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const savedUser = getSavedUser();
     return {
       balance: (savedUser?.balance ?? 0),
       total_amount: (savedUser?.total_amount ?? 0)
     };
   });
   const [balance, setBalance] = useState(() => {
-    const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const savedUser = getSavedUser();
     return (savedUser?.balance ?? 0).toFixed(2);
   })
   const [approvedDepositAmount, setApprovedDepositAmount] = useState(0);
@@ -39,15 +39,15 @@ const Deposit = () => {
 
   // Single function to refresh data (called manually after deposit/withdrawal)
   const refreshUserData = async () => {
-    const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const savedUser = getSavedUser();
     const token = localStorage.getItem('token');
-    
+
     if (savedUser && token) {
       try {
         const userResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
+
         const user = userResponse.data.user;
         setBalance(user.balance.toFixed(2));
         setUserData({
@@ -55,17 +55,17 @@ const Deposit = () => {
           total_amount: user.total_amount
         });
         localStorage.setItem('user', JSON.stringify(user));
-        
+
         // Calculate approved deposit amount
         const response = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${user._id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        
+
         const deposits = response.data;
         const approvedAmount = deposits
           .filter(deposit => deposit.status === 'approved')
           .reduce((sum, deposit) => sum + deposit.amount, 0);
-        
+
         setApprovedDepositAmount(approvedAmount);
       } catch (error) {
         console.error('Error fetching user data:', error);
@@ -75,42 +75,42 @@ const Deposit = () => {
 
   // Balance change detection state
   const [lastBalanceCheck, setLastBalanceCheck] = useState(0);
-  
+
   // Detect balance changes (like Quantify page)
   useEffect(() => {
     const detectBalanceChange = async () => {
       const result = await checkBalanceChange();
-      
+
       if (result.detected) {
         console.log('💰 Deposit page detected balance change!');
         console.log('Old Balance:', result.oldBalance);
         console.log('New Balance:', result.newBalance);
-        
+
         // Update displayed balance
         setBalance(result.newBalance.toFixed(2));
         setUserData({
           balance: result.newBalance,
           total_amount: result.newBalance + (result.newQuantify || 0)
         });
-        
+
         // Show visual feedback (optional - can be removed if not needed)
         console.log('✅ Balance updated on Deposit page');
-        
+
         setLastBalanceCheck(result.newBalance);
       }
     };
-    
+
     // Check for balance changes every 10 seconds (optimized for server load)
     const interval = setInterval(detectBalanceChange, 10000);
-    
+
     // Also listen for custom balance update events
     const handleBalanceUpdate = (event) => {
       console.log('📢 Balance update event received on Deposit page:', event.detail);
       detectBalanceChange();
     };
-    
+
     window.addEventListener('balance-updated', handleBalanceUpdate);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('balance-updated', handleBalanceUpdate);
@@ -120,7 +120,7 @@ const Deposit = () => {
   // Initial load only - no continuous updates
   useEffect(() => {
     // Load initial data once
-    const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
+    const savedUser = getSavedUser();
     if (savedUser) {
       setBalance((savedUser?.balance ?? 0).toFixed(2));
       setUserData({
@@ -129,7 +129,7 @@ const Deposit = () => {
       });
       setLastBalanceCheck(savedUser?.balance ?? 0);
     }
-    
+
     fetchDepositHistory();
   }, []);
 
@@ -155,8 +155,9 @@ const Deposit = () => {
     try {
       setLoadingHistory(true);
       const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user'));
-      
+      const user = getSavedUser();
+      if (!user?._id) return; // extra safety
+
       if (!token || !user) {
         console.error('User not authenticated');
         return;
@@ -241,7 +242,7 @@ const Deposit = () => {
           </div>
           <div className="flex items-center space-x-3">
             <span className="text-3xl font-black">₹{balance || '0.00'}</span>
-            <button 
+            <button
               onClick={() => {
                 // Manual refresh - fetches data once from server
                 refreshUserData();
@@ -262,16 +263,15 @@ const Deposit = () => {
         {/* Payment Methods Grid */}
         <div className="grid grid-cols-4 gap-2 sm:gap-3">
           {paymentMethods.map((m) => (
-            <div 
-              key={m.id} 
+            <div
+              key={m.id}
               onClick={() => setSelectedMethod(m.id)}
               className="flex flex-col items-center space-y-1.5 cursor-pointer group"
             >
-              <div className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${
-                selectedMethod === m.id 
-                ? 'bg-[#49bace] shadow-lg shadow-[#49bace]/20 scale-105' 
+              <div className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl flex items-center justify-center transition-all ${selectedMethod === m.id
+                ? 'bg-[#49bace] shadow-lg shadow-[#49bace]/20 scale-105'
                 : 'bg-white border border-gray-200 hover:border-[#49bace]/50'
-              }`}>
+                }`}>
                 {m.img ? (
                   <img src={m.img} alt={m.name} className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-lg" />
                 ) : (
@@ -283,9 +283,8 @@ const Deposit = () => {
                   </span>
                 )}
               </div>
-              <span className={`text-[9px] sm:text-[10px] font-bold text-center leading-tight ${
-                selectedMethod === m.id ? 'text-[#49bace]' : 'text-gray-500'
-              }`}>
+              <span className={`text-[9px] sm:text-[10px] font-bold text-center leading-tight ${selectedMethod === m.id ? 'text-[#49bace]' : 'text-gray-500'
+                }`}>
                 {m.name}
               </span>
             </div>
@@ -300,14 +299,13 @@ const Deposit = () => {
           </div>
           <div className="grid grid-cols-2 gap-3">
             {channels.map((c) => (
-              <div 
+              <div
                 key={c.id}
                 onClick={() => setSelectedChannel(c.id)}
-                className={`p-3 rounded-2xl border transition-all cursor-pointer ${
-                  selectedChannel === c.id 
-                  ? 'bg-[#49bace]/10 border-[#49bace] shadow-sm' 
+                className={`p-3 rounded-2xl border transition-all cursor-pointer ${selectedChannel === c.id
+                  ? 'bg-[#49bace]/10 border-[#49bace] shadow-sm'
                   : 'bg-[#1a1f2e] border-gray-800 hover:border-gray-600'
-                }`}
+                  }`}
               >
                 <p className={`text-[11px] font-black ${selectedChannel === c.id ? 'text-[#49bace]' : 'text-gray-300'}`}>{c.name}</p>
                 <p className={`text-[9px] mt-0.5 ${selectedChannel === c.id ? 'text-[#49bace]/70' : 'text-gray-500'}`}>{c.range}</p>
@@ -327,11 +325,10 @@ const Deposit = () => {
               <button
                 key={amt}
                 onClick={() => handleAmountClick(amt)}
-                className={`py-3 rounded-xl text-sm font-black transition-all ${
-                  (amount === amt || (amt === '1K' && amount === '1000') || (amt === '2K' && amount === '2000') || (amt === '3K' && amount === '3000') || (amt === '5K' && amount === '5000') || (amt === '10K' && amount === '10000') || (amt === '20K' && amount === '20000') || (amt === '30K' && amount === '30000') || (amt === '50K' && amount === '50000'))
+                className={`py-3 rounded-xl text-sm font-black transition-all ${(amount === amt || (amt === '1K' && amount === '1000') || (amt === '2K' && amount === '2000') || (amt === '3K' && amount === '3000') || (amt === '5K' && amount === '5000') || (amt === '10K' && amount === '10000') || (amt === '20K' && amount === '20000') || (amt === '30K' && amount === '30000') || (amt === '50K' && amount === '50000'))
                   ? 'bg-[#49bace] text-white shadow-lg shadow-[#49bace]/20'
                   : 'bg-[#1a1f2e] border border-gray-800 text-gray-400 hover:border-gray-600'
-                }`}
+                  }`}
               >
                 {amt.includes('K') ? amt : `₹${amt}`}
               </button>
@@ -370,7 +367,7 @@ const Deposit = () => {
             <History size={18} className="text-[#49bace]" />
             <h2 className="text-sm font-black uppercase tracking-widest text-gray-200">Deposit history</h2>
           </div>
-          
+
           {loadingHistory ? (
             <div className="py-8 flex flex-col items-center">
               <div className="w-12 h-12 border-4 border-[#49bace]/30 border-t-[#49bace] rounded-full animate-spin mb-4"></div>
@@ -384,11 +381,10 @@ const Deposit = () => {
                     <div>
                       <div className="flex items-center space-x-2">
                         <span className="text-white font-bold">₹{deposit.amount}</span>
-                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                          deposit.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${deposit.status === 'approved' ? 'bg-green-500/20 text-green-400' :
                           deposit.status === 'rejected' ? 'bg-red-500/20 text-red-400' :
-                          'bg-yellow-500/20 text-yellow-400'
-                        }`}>
+                            'bg-yellow-500/20 text-yellow-400'
+                          }`}>
                           {deposit.status || 'pending'}
                         </span>
                       </div>
@@ -430,7 +426,7 @@ const Deposit = () => {
           <span className="text-[10px] text-gray-500 font-bold uppercase tracking-tight">Recharge Method:</span>
           <span className="text-xs font-black text-[#49bace] uppercase">{selectedMethod}</span>
         </div>
-        <button 
+        <button
           className="bg-[#49bace] text-white px-8 py-3 rounded-2xl font-black text-sm shadow-lg shadow-[#49bace]/20 hover:scale-105 active:scale-95 transition-all"
           onClick={() => {
             // Check which channel is selected and navigate accordingly
