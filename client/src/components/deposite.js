@@ -17,6 +17,18 @@ import UPIQR from '../upi/payNameIcon2_202507151632105oei.png'
 import USDTLogo from '../upi/payNameIcon_20240717174902o85p.png'
 import ARPayLogo from '../upi/payNameIcon_20241029231521emi6.png'
 
+
+const getSavedUser = () => {
+  try {
+    const str = localStorage.getItem('user');
+    if (!str || str === 'undefined' || str === 'null') return {};
+    return JSON.parse(str);
+  } catch (e) {
+    localStorage.removeItem('user');
+    return {};
+  }
+};
+
 const Deposit = () => {
   const navigate = useNavigate()
   const [selectedMethod, setSelectedMethod] = useState('UPI-QR')
