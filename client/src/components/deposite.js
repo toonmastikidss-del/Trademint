@@ -37,6 +37,18 @@ const Deposit = () => {
   const [depositHistory, setDepositHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
+  // Debug: Log component mount
+  useEffect(() => {
+    console.log('🔍 Deposit component mounted');
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user'));
+    console.log('📋 Auth state:', { 
+      hasToken: !!token, 
+      hasUser: !!user,
+      userId: user?._id 
+    });
+  }, []);
+
   // Single function to refresh data (called manually after deposit/withdrawal)
   const refreshUserData = async () => {
     const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -148,14 +160,18 @@ const Deposit = () => {
 
   const fetchDepositHistory = async () => {
     try {
+      console.log('📡 Fetching deposit history...');
       setLoadingHistory(true);
       const token = localStorage.getItem('token');
       const user = JSON.parse(localStorage.getItem('user'));
       
       if (!token || !user) {
-        console.error('User not authenticated');
+        console.error('❌ User not authenticated - missing token or user data');
         return;
       }
+
+      console.log('👤 User ID:', user._id);
+      console.log('🔑 Token exists:', !!token);
 
       const response = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${user._id}`, {
         headers: {
@@ -163,9 +179,12 @@ const Deposit = () => {
         }
       });
 
+      console.log('✅ Deposit history fetched:', response.data.length, 'records');
       setDepositHistory(response.data);
     } catch (error) {
-      console.error('Error fetching deposit history:', error);
+      console.error('❌ Error fetching deposit history:', error.message);
+      console.error('Response:', error.response?.data);
+      console.error('Status:', error.response?.status);
       setDepositHistory([]);
     } finally {
       setLoadingHistory(false);
