@@ -13,13 +13,25 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://trademint-se
 let lastKnownBalance = null;
 let lastKnownQuantify = null;
 
+// ✅ Safe localStorage parser — har jagah yahi use karo
+const getSavedUser = () => {
+  try {
+    const str = localStorage.getItem('user');
+    if (!str || str === 'undefined' || str === 'null') return null;
+    return JSON.parse(str);
+  } catch (e) {
+    localStorage.removeItem('user'); // corrupt data clear karo
+    return null;
+  }
+};
+
 /**
  * Initialize balance change detection
  * Call this once when app starts
  */
 export const initializeBalanceDetection = () => {
   // Load initial balance
-  const savedUser = JSON.parse(localStorage.getItem('user'));
+  const savedUser = getSavedUser(); // ✅ Fixed
   if (savedUser) {
     lastKnownBalance = savedUser.balance || 0;
     lastKnownQuantify = savedUser.quantify || 0;
@@ -38,10 +50,10 @@ export const initializeBalanceDetection = () => {
 export const checkBalanceChange = async () => {
   try {
     const token = localStorage.getItem('token');
-    const savedUser = JSON.parse(localStorage.getItem('user'));
+    const savedUser = getSavedUser(); // ✅ Fixed
     
     if (!token || !savedUser) {
-      return;
+      return { detected: false };
     }
     
     // Fetch fresh user data
@@ -61,15 +73,17 @@ export const checkBalanceChange = async () => {
       console.log('💰 BALANCE CHANGE DETECTED!');
       console.log('Old Balance:', lastKnownBalance);
       console.log('New Balance:', currentBalance);
-      console.log('Difference:', (currentBalance - lastKnownBalance).toFixed(2));
+      console.log('Difference:', (currentBalance - (lastKnownBalance || 0)).toFixed(2));
       
       if (quantifyChanged) {
         console.log('Old Quantify:', lastKnownQuantify);
         console.log('New Quantify:', currentQuantify);
       }
       
-      // Update localStorage
-      localStorage.setItem('user', JSON.stringify(user));
+      // ✅ Safe save — sirf valid object hi save karo
+      if (user && typeof user === 'object') {
+        localStorage.setItem('user', JSON.stringify(user));
+      }
       
       // Dispatch custom event for other components to listen
       window.dispatchEvent(new CustomEvent('balance-updated', {
@@ -110,7 +124,7 @@ export const checkBalanceChange = async () => {
 export const forceRefreshUserData = async () => {
   try {
     const token = localStorage.getItem('token');
-    const savedUser = JSON.parse(localStorage.getItem('user'));
+    const savedUser = getSavedUser(); // ✅ Fixed
     
     if (!token || !savedUser) {
       return null;
@@ -121,7 +135,11 @@ export const forceRefreshUserData = async () => {
     });
     
     const user = userResponse.data.user;
-    localStorage.setItem('user', JSON.stringify(user));
+
+    // ✅ Safe save
+    if (user && typeof user === 'object') {
+      localStorage.setItem('user', JSON.stringify(user));
+    }
     
     // Update last known values without triggering change event
     lastKnownBalance = user.balance || 0;
