@@ -44,7 +44,7 @@ const Deposit = () => {
   const [balance, setBalance] = useState(() => {
     const savedUser = getSavedUser();
     return (savedUser?.balance ?? 0).toFixed(2);
-  })
+  });
   const [approvedDepositAmount, setApprovedDepositAmount] = useState(0);
   const [depositHistory, setDepositHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
