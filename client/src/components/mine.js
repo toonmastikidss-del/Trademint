@@ -21,61 +21,71 @@ const Mine = () => {
       try {
         // Get user from localStorage
         const savedUserStr = localStorage.getItem('user');
-        const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+        let savedUser = null;
+        try {
+          savedUser = savedUserStr && savedUserStr !== 'undefined' && savedUserStr !== 'null'
+            ? JSON.parse(savedUserStr)
+            : null;
+        } catch (e) {
+          console.error('Invalid user in localStorage:', e);
+          localStorage.removeItem('user'); // corrupt data clear karo
+        }
         const token = localStorage.getItem('token');
-        
+
         if (savedUser && token) {
           // Fetch fresh user data from server
           const res = await axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          
+
           // Check if response data exists
           const user = res.data?.user || savedUser;
-          
+
           // Calculate UID
           let calculatedUid = '------';
           if (user.phone) {
             calculatedUid = user.phone.slice(-6);
           } else if (user.email) {
-            calculatedUid = Math.abs(user.email.split('').reduce((a, b) => { 
-              a = ((a << 5) - a) + b.charCodeAt(0); 
-              return a & a 
+            calculatedUid = Math.abs(user.email.split('').reduce((a, b) => {
+              a = ((a << 5) - a) + b.charCodeAt(0);
+              return a & a
             }, 0)).toString().slice(-6);
           }
 
           // Calculate total balance based on the condition: if quantify > balance, show quantify; otherwise show balance
           const totalBalance = Math.max(user.balance ?? 0, user.quantify ?? 0);
-          
-          setUserData({ 
-            name: user.name || 'MEMBER_NNGX', 
-            uid: calculatedUid, 
+
+          setUserData({
+            name: user.name || 'MEMBER_NNGX',
+            uid: calculatedUid,
             balance: user.balance ?? 0,
             total_amount: totalBalance,
             quantify: user.quantify ?? 0
           });
-          
+
           // Update localStorage with fresh data
-          localStorage.setItem('user', JSON.stringify(user));
-          
+          if (user && typeof user === 'object') {
+            localStorage.setItem('user', JSON.stringify(user));
+          }
+
           // Fetch deposit history to calculate approved deposit amount
           const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${user._id}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          
+
           const deposits = depositRes.data;
           const approvedAmount = deposits
             .filter(deposit => deposit.status === 'approved')
             .reduce((sum, deposit) => sum + deposit.amount, 0);
-          
+
           setApprovedDepositAmount(approvedAmount);
-          
+
           // Fetch quantify data
           try {
             const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${user._id}`, {
               headers: { Authorization: `Bearer ${token}` }
             });
-            
+
             setQuantifyData({
               totalRevenue: quantifyRes.data.totalRevenue,
               todayEarning: quantifyRes.data.todayEarning
@@ -89,19 +99,19 @@ const Mine = () => {
           if (savedUser?.phone) {
             calculatedUid = savedUser.phone.slice(-6);
           } else if (savedUser?.email) {
-            calculatedUid = Math.abs(savedUser.email.split('').reduce((a, b) => { 
-              a = ((a << 5) - a) + b.charCodeAt(0); 
-              return a & a 
+            calculatedUid = Math.abs(savedUser.email.split('').reduce((a, b) => {
+              a = ((a << 5) - a) + b.charCodeAt(0);
+              return a & a
             }, 0)).toString().slice(-6);
           }
 
-          setUserData({ 
-            name: savedUser?.name || 'MEMBER_NNGX', 
-            uid: calculatedUid, 
+          setUserData({
+            name: savedUser?.name || 'MEMBER_NNGX',
+            uid: calculatedUid,
             balance: savedUser?.balance ?? 0,
             total_amount: savedUser?.total_amount ?? 0
           });
-          
+
           // Fetch deposit history to calculate approved deposit amount
           const token = localStorage.getItem('token');
           if (token && savedUser?._id) {
@@ -109,20 +119,20 @@ const Mine = () => {
               const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
                 headers: { Authorization: `Bearer ${token}` }
               });
-              
+
               const deposits = depositRes.data;
               const approvedAmount = deposits
                 .filter(deposit => deposit.status === 'approved')
                 .reduce((sum, deposit) => sum + deposit.amount, 0);
-              
+
               setApprovedDepositAmount(approvedAmount);
-              
+
               // Fetch quantify data
               try {
                 const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
                   headers: { Authorization: `Bearer ${token}` }
                 });
-                
+
                 setQuantifyData({
                   totalRevenue: quantifyRes.data.totalRevenue,
                   todayEarning: quantifyRes.data.todayEarning
@@ -144,23 +154,23 @@ const Mine = () => {
         if (savedUser?.phone) {
           calculatedUid = savedUser.phone.slice(-6);
         } else if (savedUser?.email) {
-          calculatedUid = Math.abs(savedUser.email.split('').reduce((a, b) => { 
-            a = ((a << 5) - a) + b.charCodeAt(0); 
-            return a & a 
+          calculatedUid = Math.abs(savedUser.email.split('').reduce((a, b) => {
+            a = ((a << 5) - a) + b.charCodeAt(0);
+            return a & a
           }, 0)).toString().slice(-6);
         }
 
         // Calculate total balance based on the condition: if quantify > balance, show quantify; otherwise show balance
         const totalBalance = Math.max(savedUser?.balance ?? 0, savedUser?.quantify ?? 0);
-        
-        setUserData({ 
-          name: savedUser?.name || 'MEMBER_NNGX', 
-          uid: calculatedUid, 
+
+        setUserData({
+          name: savedUser?.name || 'MEMBER_NNGX',
+          uid: calculatedUid,
           balance: savedUser?.balance ?? 0,
           total_amount: totalBalance,
           quantify: savedUser?.quantify ?? 0
         });
-        
+
         // Fetch deposit history to calculate approved deposit amount
         const token = localStorage.getItem('token');
         if (token && savedUser?._id) {
@@ -168,20 +178,20 @@ const Mine = () => {
             const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
               headers: { Authorization: `Bearer ${token}` }
             });
-            
+
             const deposits = depositRes.data;
             const approvedAmount = deposits
               .filter(deposit => deposit.status === 'approved')
               .reduce((sum, deposit) => sum + deposit.amount, 0);
-            
+
             setApprovedDepositAmount(approvedAmount);
-            
+
             // Fetch quantify data
             try {
               const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
                 headers: { Authorization: `Bearer ${token}` }
               });
-              
+
               setQuantifyData({
                 totalRevenue: quantifyRes.data.totalRevenue,
                 todayEarning: quantifyRes.data.todayEarning
@@ -238,7 +248,7 @@ const Mine = () => {
 
       {/* Overlapping Content Container */}
       <div className='px-4 mt-4 space-y-6'>
-        
+
         {/* Wallet Section with Enter Wallet (Added top margin) */}
         <div className='bg-[#212431] border border-gray-700 rounded-[2rem] shadow-2xl p-6 mt-8'>
           <div className='flex justify-between items-center mb-6'>
@@ -253,7 +263,7 @@ const Mine = () => {
               Enter wallet
             </button>
           </div>
-          
+
           <div className='grid grid-cols-4 gap-2'>
             {[
               { label: 'Deposit', icon: faMoneyBillTrendUp, path: '/deposite' },
@@ -340,7 +350,7 @@ const Mine = () => {
             <h3 className='text-gray-200 text-xs font-black uppercase tracking-widest'>Feedback & Reviews</h3>
           </div>
           <div className='grid grid-cols-2 gap-4'>
-            <div 
+            <div
               onClick={() => navigate('/feedback')}
               className='bg-[#101821] border border-gray-800 p-4 rounded-2xl flex items-center space-x-3 active:scale-95 transition-all cursor-pointer group hover:border-emerald-500/30'
             >
@@ -352,7 +362,7 @@ const Mine = () => {
                 <span className='text-[9px] text-gray-500'>Share experience</span>
               </div>
             </div>
-            <div 
+            <div
               onClick={() => navigate('/feedback')}
               className='bg-[#101821] border border-gray-800 p-4 rounded-2xl flex items-center space-x-3 active:scale-95 transition-all cursor-pointer group hover:border-rose-500/30'
             >
@@ -378,7 +388,7 @@ const Mine = () => {
             </div>
             <span className='text-[10px] text-[#49bace] font-bold uppercase'>Real-time Sync</span>
           </div>
-          
+
           <div className='p-6'>
             <div className='grid grid-cols-2 gap-6'>
               <div className='bg-[#101821] p-4 rounded-2xl border border-gray-800/50'>
@@ -402,7 +412,7 @@ const Mine = () => {
         </div>
 
         {/* Sign Out Button (Added bottom margin) */}
-        <button 
+        <button
           className="mt-6 mb-12 w-full py-4 bg-[#101821] border border-[#49bace]/30 text-[#49bace] font-bold rounded-2xl shadow-xl flex items-center justify-center space-x-3 active:scale-[0.98] transition-all hover:bg-[#49bace]/5"
           onClick={() => setShowLogoutModal(true)}
         >
@@ -434,7 +444,7 @@ const Mine = () => {
                   <div className="p-4 rounded-3xl bg-rose-500/10 text-rose-500">
                     <AlertCircle size={40} />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <h3 className="text-xl font-bold text-rose-500">
                       Confirm Logout
