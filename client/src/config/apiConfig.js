@@ -5,7 +5,7 @@ const API_CONFIG = {
   
   
   DATABASE: {
-    MONGO_URI: 'mongodb+srv://toonmastikidss_db_user:h1ZWbzCU5gTT7YPz@cluster0.pmlkhby.mongodb.net/?appName=Cluster0'
+    MONGO_URI: 'mongodb+srv://trademintadmin7676:vUv5vmQvI8aMfD5j@trademint.yjrctlq.mongodb.net/aig_db?appName=trademint'
   }
 };
 

@@ -6,7 +6,6 @@ const bcrypt = require('bcryptjs');
 const path = require('path');
 const fileUpload = require('express-fileupload');
 
-// Models
 const Admin = require('./models/Admin');
 const QRCode = require('./models/QRCode');
 const KYC = require('./models/KYC');
@@ -21,7 +20,7 @@ app.use(cors({
     'http://localhost:3000', 
     'http://localhost:5173',
     'https://your-frontend-domain.com', // Add your production frontend URL here
-    '*' // Allow all origins (for development, remove in production)
+    '*'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
