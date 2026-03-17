@@ -5,6 +5,8 @@ const dotenv = require('dotenv');
 const bcrypt = require('bcryptjs');
 const path = require('path');
 const fileUpload = require('express-fileupload');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 
 const Admin = require('./models/Admin');
 const QRCode = require('./models/QRCode');
@@ -12,17 +14,58 @@ const KYC = require('./models/KYC');
 
 dotenv.config();
 
+// Validate required environment variables
+if (!process.env.MONGO_URI) {
+  console.error('❌ ERROR: MONGO_URI is not defined in environment variables');
+  process.exit(1);
+}
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your_jwt_secret_key_change_this_in_production') {
+  console.warn('⚠️  WARNING: JWT_SECRET is using default value. Change this in production!');
+}
+
 const app = express();
 
 // Middleware
 app.use(cors({
-  origin: [
-    'https://trademint.onrender.com', // Add your production frontend URL here
-  ],
+  origin: process.env.CORS_ORIGINS 
+    ? process.env.CORS_ORIGINS.split(',') 
+    : ['http://localhost:3000', 'http://localhost:5173', 'https://trademint.onrender.com'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Security Headers
+if (process.env.NODE_ENV === 'production') {
+  app.use(helmet({
+    contentSecurityPolicy: false, // Disable CSP for React apps
+    crossOriginEmbedderPolicy: false,
+  }));
+}
+
+// Rate Limiting - Prevent API abuse
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // Limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply rate limiting to all API routes
+app.use('/api/', limiter);
+
+// Stricter rate limit for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // Limit each IP to 20 login attempts per 15 minutes
+  message: 'Too many login attempts, please try again later.',
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/admin/auth/login', authLimiter);
+
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -70,14 +113,21 @@ const createInitialAdmin = async () => {
   }
 };
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
+// Connect to MongoDB with proper error handling
+mongoose.connect(process.env.MONGO_URI, {
+  serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
+  socketTimeoutMS: 45000, // Socket timeout
+})
     .then(async () => {
-      console.log('MongoDB Connected');
+      console.log('✅ MongoDB Connected Successfully');
       // Create initial admin after DB connection
       await createInitialAdmin();
     })
-    .catch(err => console.log('DB Connection Error:', err));
+    .catch(err => {
+      console.error('❌ MongoDB Connection Error:', err.message);
+      console.error('Please check your MONGO_URI environment variable and network connection');
+      process.exit(1); // Exit if database connection fails
+    });
 
 // Serve static files from React app in production
 // if (process.env.NODE_ENV === 'production') {

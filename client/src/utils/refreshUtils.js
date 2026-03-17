@@ -3,6 +3,11 @@
  * This prevents continuous auto-updates that increase server load
  */
 
+import axios from 'axios';
+
+// Use environment variable or fallback to production URL
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://trademint-server-backend.onrender.com';
+
 export const refreshUserDataOnce = async () => {
   try {
     const savedUser = JSON.parse(localStorage.getItem('user'));
@@ -14,7 +19,7 @@ export const refreshUserDataOnce = async () => {
     }
 
     // Fetch fresh user data from server
-    const userResponse = await axios.get('http://localhost:5000/api/auth/user', {
+    const userResponse = await axios.get(`${API_BASE_URL}/api/auth/user`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     

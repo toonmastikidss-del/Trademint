@@ -6,6 +6,9 @@
 
 import axios from 'axios';
 
+// Use environment variable or fallback to production URL
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://trademint-server-backend.onrender.com';
+
 // Store last known balance to detect changes
 let lastKnownBalance = null;
 let lastKnownQuantify = null;
@@ -42,7 +45,7 @@ export const checkBalanceChange = async () => {
     }
     
     // Fetch fresh user data
-    const userResponse = await axios.get('http://localhost:5000/api/auth/user', {
+    const userResponse = await axios.get(`${API_BASE_URL}/api/auth/user`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     
@@ -113,7 +116,7 @@ export const forceRefreshUserData = async () => {
       return null;
     }
     
-    const userResponse = await axios.get('http://localhost:5000/api/auth/user', {
+    const userResponse = await axios.get(`${API_BASE_URL}/api/auth/user`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     

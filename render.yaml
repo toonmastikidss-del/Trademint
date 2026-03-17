@@ -1,31 +1,38 @@
 services:
-  # Admin Panel Frontend (React)
-  - type: web
-    name: ufeg-admin-frontend
-    env: node
-    buildCommand: npm install && npm run build
-    startCommand: npm start
-    staticPublishPath: ./client/build
-    envVars:
-      - key: NODE_ENV
-        value: production
-    domains:
-      - ufeg-admin.onrender.com
-
   # Backend API Server
   - type: web
     name: ufeg-backend-api
     env: node
-    buildCommand: npm install
-    startCommand: node server/server.js
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && node server.js
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 5000
-      - key: MONGODB_URI
+      - key: MONGO_URI
         sync: false
       - key: JWT_SECRET
         sync: false
+      - key: CORS_ORIGINS
+        value: https://trademint.onrender.com,http://localhost:3000,http://localhost:5173
     domains:
       - ufeg-api.onrender.com
+
+  # Admin Panel Frontend (React)
+  - type: web
+    name: ufeg-admin-frontend
+    env: static
+    region: oregon
+    plan: free
+    buildCommand: cd client && npm install && npm run build
+    staticPublishPath: ./client/build
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: REACT_APP_API_BASE_URL
+        value: https://ufeg-api.onrender.com
+    domains:
+      - ufeg-admin.onrender.com
