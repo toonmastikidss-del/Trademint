@@ -1,7 +1,7 @@
 
 
 const API_CONFIG = {
-  BASE_URL: 'https://trademint-server-backend.onrender.com',
+  BASE_URL: 'http://localhost:5000',
   
   
   DATABASE: {
