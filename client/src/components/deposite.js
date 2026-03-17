@@ -37,18 +37,6 @@ const Deposit = () => {
   const [depositHistory, setDepositHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Debug: Log component mount
-  useEffect(() => {
-    console.log('🔍 Deposit component mounted');
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user'));
-    console.log('📋 Auth state:', { 
-      hasToken: !!token, 
-      hasUser: !!user,
-      userId: user?._id 
-    });
-  }, []);
-
   // Single function to refresh data (called manually after deposit/withdrawal)
   const refreshUserData = async () => {
     const savedUser = JSON.parse(localStorage.getItem('user') || '{}');
@@ -152,26 +140,27 @@ const Deposit = () => {
 
   // Calculate approved deposit amount whenever depositHistory changes
   useEffect(() => {
-    const approvedAmount = depositHistory
-      .filter(deposit => deposit.status === 'approved')
-      .reduce((sum, deposit) => sum + deposit.amount, 0);
-    setApprovedDepositAmount(approvedAmount);
+    // Ensure depositHistory is an array before calling map/filter
+    if (Array.isArray(depositHistory)) {
+      const approvedAmount = depositHistory
+        .filter(deposit => deposit.status === 'approved')
+        .reduce((sum, deposit) => sum + deposit.amount, 0);
+      setApprovedDepositAmount(approvedAmount);
+    } else {
+      setApprovedDepositAmount(0);
+    }
   }, [depositHistory]);
 
   const fetchDepositHistory = async () => {
     try {
-      console.log('📡 Fetching deposit history...');
       setLoadingHistory(true);
       const token = localStorage.getItem('token');
       const user = JSON.parse(localStorage.getItem('user'));
       
       if (!token || !user) {
-        console.error('❌ User not authenticated - missing token or user data');
+        console.error('User not authenticated');
         return;
       }
-
-      console.log('👤 User ID:', user._id);
-      console.log('🔑 Token exists:', !!token);
 
       const response = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${user._id}`, {
         headers: {
@@ -179,13 +168,16 @@ const Deposit = () => {
         }
       });
 
-      console.log('✅ Deposit history fetched:', response.data.length, 'records');
-      setDepositHistory(response.data);
+      // Ensure response.data is always an array
+      if (Array.isArray(response.data)) {
+        setDepositHistory(response.data);
+      } else {
+        console.error('Unexpected response format:', response.data);
+        setDepositHistory([]); // Fallback to empty array
+      }
     } catch (error) {
-      console.error('❌ Error fetching deposit history:', error.message);
-      console.error('Response:', error.response?.data);
-      console.error('Status:', error.response?.status);
-      setDepositHistory([]);
+      console.error('Error fetching deposit history:', error);
+      setDepositHistory([]); // Ensure it's an empty array on error
     } finally {
       setLoadingHistory(false);
     }
@@ -384,7 +376,7 @@ const Deposit = () => {
               <div className="w-12 h-12 border-4 border-[#49bace]/30 border-t-[#49bace] rounded-full animate-spin mb-4"></div>
               <p className="text-xs font-bold text-gray-500 uppercase tracking-tighter">Loading records...</p>
             </div>
-          ) : depositHistory.length > 0 ? (
+          ) : Array.isArray(depositHistory) && depositHistory.length > 0 ? (
             <div className="space-y-3 max-h-60 overflow-y-auto">
               {depositHistory.map((deposit, index) => (
                 <div key={deposit._id || index} className="bg-[#1a1f2e] rounded-2xl p-4 border border-gray-800">

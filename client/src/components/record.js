@@ -16,24 +16,49 @@ const Record = () => {
     try {
       const token = localStorage.getItem('token');
       const savedUserStr = localStorage.getItem('user');
-      const savedUser = savedUserStr ? JSON.parse(savedUserStr) : null;
+      
+      // Safely parse user data with error handling
+      let savedUser = null;
+      if (savedUserStr) {
+        try {
+          savedUser = JSON.parse(savedUserStr);
+        } catch (parseError) {
+          console.error('Error parsing user data from localStorage:', parseError);
+          savedUser = null;
+        }
+      }
       
       if (!token || !savedUser) {
         console.error('User not authenticated');
+        setTransactions([]); // Ensure transactions is an empty array
         return;
       }
       
       setUser(savedUser);
       
-      // Fetch withdrawal requests
-      const withdrawalRes = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal/user/${savedUser._id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Fetch withdrawal requests with safety check
+      let withdrawalData = [];
+      try {
+        const withdrawalRes = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal/user/${savedUser._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        withdrawalData = Array.isArray(withdrawalRes.data) ? withdrawalRes.data : [];
+      } catch (error) {
+        console.error('Error fetching withdrawals:', error);
+        withdrawalData = [];
+      }
       
-      // Fetch deposit records
-      const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Fetch deposit records with safety check
+      let depositData = [];
+      try {
+        const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        depositData = Array.isArray(depositRes.data) ? depositRes.data : [];
+      } catch (error) {
+        console.error('Error fetching deposits:', error);
+        depositData = [];
+      }
       
       // Fetch reward history (user tasks with rewards)
       let rewardHistory = [];
@@ -87,7 +112,7 @@ const Record = () => {
       const allTransactions = [];
       
       // Add withdrawal requests
-      withdrawalRes.data.forEach(request => {
+      withdrawalData.forEach(request => {
         allTransactions.push({
           type: 'Withdraw',
           amount: `-${request.amount.toFixed(2)}`,
@@ -107,7 +132,7 @@ const Record = () => {
       });
       
       // Add deposit records
-      depositRes.data.forEach(deposit => {
+      depositData.forEach(deposit => {
         allTransactions.push({
           type: 'Recharge',
           amount: `+${deposit.amount.toFixed(2)}`,
@@ -254,14 +279,16 @@ const Record = () => {
   };
 
   // Filter transactions based on selected tab
-  const filteredTransactions = selected === 'All' 
-    ? transactions 
-    : transactions.filter(transaction => 
-        selected === 'Withdraw' ? transaction.type === 'Withdraw' :
-        selected === 'Recharge' ? transaction.type === 'Recharge' :
-        selected === 'Trade' ? transaction.type === 'Trade' :
-        selected === 'Reward' ? transaction.type === 'Reward' : false
-      );
+  const filteredTransactions = Array.isArray(transactions) 
+    ? (selected === 'All' 
+      ? transactions 
+      : transactions.filter(transaction => 
+          selected === 'Withdraw' ? transaction.type === 'Withdraw' :
+          selected === 'Recharge' ? transaction.type === 'Recharge' :
+          selected === 'Trade' ? transaction.type === 'Trade' :
+          selected === 'Reward' ? transaction.type === 'Reward' : false
+        ))
+    : [];
 
   useEffect(() => {
     fetchTransactionData();
