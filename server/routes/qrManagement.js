@@ -8,35 +8,35 @@ const router = express.Router();
 
 // Configure multer for image upload
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../uploads/qrcodes');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
+    destination: (req, file, cb) => {
+        const uploadDir = path.join(__dirname, '../uploads/qrcodes');
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'qr-' + uniqueSuffix + path.extname(file.originalname));
     }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, 'qr-' + uniqueSuffix + path.extname(file.originalname));
-  }
 });
 
 const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only images are allowed (jpeg, jpg, png, gif)'));
+    storage: storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|gif/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error('Only images are allowed (jpeg, jpg, png, gif)'));
+        }
     }
-  }
 });
 
 // GET all QR codes
@@ -57,6 +57,8 @@ router.get('/qrcodes/image/:filename', (req, res) => {
     const imagePath = path.join(__dirname, '../uploads/qrcodes', filename);
     
     if (fs.existsSync(imagePath)) {
+      res.setHeader('Access-Control-Allow-Origin', '*');           // ✅ Line 1 add karo
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin'); // ✅ Line 2 add karo
       res.sendFile(imagePath);
     } else {
       res.status(404).json({ message: 'Image not found' });
@@ -72,11 +74,11 @@ router.get('/qrcodes/:paymentMethod', async (req, res) => {
     try {
         const { paymentMethod } = req.params;
         const qrCode = await QRCode.findOne({ paymentMethod });
-        
+
         if (!qrCode) {
             return res.status(404).json({ message: 'QR code not found' });
         }
-        
+
         res.json(qrCode);
     } catch (err) {
         console.error('Error fetching QR code:', err);
@@ -89,7 +91,7 @@ router.post('/qrcodes/upload', upload.single('qrImage'), async (req, res) => {
     console.log('Upload route called');
     console.log('req.file:', req.file);
     console.log('req.body:', req.body);
-    
+
     try {
         if (!req.file) {
             console.log('No file received');
@@ -114,7 +116,7 @@ router.post('/qrcodes/upload', upload.single('qrImage'), async (req, res) => {
             fs.unlinkSync(req.file.path);
             return res.status(400).json({ message: 'Admin ID is required' });
         }
-        
+
         const admin = await Admin.findById(adminId);
         if (!admin) {
             console.log('Admin not found with ID:', adminId);
@@ -140,16 +142,16 @@ router.post('/qrcodes/upload', upload.single('qrImage'), async (req, res) => {
                 lastUpdated: new Date(),
                 isActive: true
             },
-            { 
-                new: true, 
+            {
+                new: true,
                 upsert: true,
                 runValidators: true
             }
         );
 
-        res.json({ 
-            message: 'QR code uploaded successfully', 
-            qrCode: updatedQRCode 
+        res.json({
+            message: 'QR code uploaded successfully',
+            qrCode: updatedQRCode
         });
     } catch (err) {
         console.error('Error uploading QR code:', err);
@@ -163,8 +165,8 @@ router.post('/qrcodes/upload', upload.single('qrImage'), async (req, res) => {
                 console.error('Error deleting file:', deleteErr);
             }
         }
-        res.status(500).json({ 
-            message: 'Server error', 
+        res.status(500).json({
+            message: 'Server error',
             error: err.message,
             stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
         });
@@ -174,14 +176,14 @@ router.post('/qrcodes/upload', upload.single('qrImage'), async (req, res) => {
 // POST update QR code (for base64 data)
 router.post('/qrcodes/update', async (req, res) => {
     try {
-        const { 
-            paymentMethod, 
-            qrImage, 
-            upiId, 
-            accountName, 
-            accountNumber, 
+        const {
+            paymentMethod,
+            qrImage,
+            upiId,
+            accountName,
+            accountNumber,
             ifscCode,
-            adminId 
+            adminId
         } = req.body;
 
         // Validate required fields
@@ -208,16 +210,16 @@ router.post('/qrcodes/update', async (req, res) => {
                 lastUpdated: new Date(),
                 isActive: true
             },
-            { 
-                new: true, 
+            {
+                new: true,
                 upsert: true,
                 runValidators: true
             }
         );
 
-        res.json({ 
-            message: 'QR code updated successfully', 
-            qrCode: updatedQRCode 
+        res.json({
+            message: 'QR code updated successfully',
+            qrCode: updatedQRCode
         });
     } catch (err) {
         console.error('Error updating QR code:', err);
@@ -246,9 +248,9 @@ router.post('/qrcodes/toggle-status', async (req, res) => {
         qrCode.lastUpdated = new Date();
         await qrCode.save();
 
-        res.json({ 
-            message: `QR code ${qrCode.isActive ? 'activated' : 'deactivated'} successfully`, 
-            qrCode 
+        res.json({
+            message: `QR code ${qrCode.isActive ? 'activated' : 'deactivated'} successfully`,
+            qrCode
         });
     } catch (err) {
         console.error('Error toggling QR code status:', err);
