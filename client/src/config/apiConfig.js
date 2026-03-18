@@ -1,12 +1,4 @@
 
-
-/**
- * API Configuration
- * 
- * IMPORTANT: MongoDB URI should NEVER be exposed on the client side.
- * All database operations must be performed through the backend API only.
- */
-
 const API_CONFIG = {
   // Use environment variable with fallback for production
   BASE_URL: process.env.REACT_APP_API_BASE_URL || 'https://trademint-server-backend.onrender.com',
