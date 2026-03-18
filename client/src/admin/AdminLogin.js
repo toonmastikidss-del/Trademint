@@ -19,7 +19,7 @@ const AdminLogin = () => {
     setError('');
 
     try {
-      const res = await axios.post(`${API_CONFIG.BASE_URL}/api/admin/auth/login`, {
+      const res = await axios.post(`${API_CONFIG.BASE_URL}/c/login`, {
         username,
         password
       });
