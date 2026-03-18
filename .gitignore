@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Build outputs
+client/build/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.development
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Coverage directory used by tools like istanbul
+coverage/
+lib-cov/
+
+# Temporary folders
+tmp/
+temp/
+
+# Database files
+*.db
+*.sqlite
+
+# Uploads (these should be handled separately)
+uploads/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Process pid
+pm2.log
