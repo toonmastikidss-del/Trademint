@@ -67,7 +67,11 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/admin/auth/login', authLimiter);
 
 app.use(express.json());
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', (req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));

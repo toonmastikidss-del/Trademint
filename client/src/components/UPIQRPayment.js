@@ -39,7 +39,7 @@ const UPIQRPayment = () => {
         setQrLoading(false);
       }
     };
-    
+
     fetchQrCode();
   }, []);
 
@@ -81,7 +81,7 @@ const UPIQRPayment = () => {
 
   const handleScreenshotChange = (e) => {
     const file = e.target.files[0];
-    
+
     if (file) {
       // Validate file type
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -89,16 +89,16 @@ const UPIQRPayment = () => {
         setScreenshotError('Only JPG, PNG, GIF, and WEBP images are allowed');
         return;
       }
-      
+
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         setScreenshotError('File size must be less than 5MB');
         return;
       }
-      
+
       setScreenshot(file);
       setScreenshotError('');
-      
+
       // Create preview
       const reader = new FileReader();
       reader.onload = () => {
@@ -112,7 +112,7 @@ const UPIQRPayment = () => {
     setScreenshot(null);
     setScreenshotPreview(null);
     setScreenshotError('');
-    
+
     // Reset file input
     const fileInput = document.getElementById('screenshot-upload');
     if (fileInput) {
@@ -134,38 +134,38 @@ const UPIQRPayment = () => {
       alert('Please enter a valid 12-digit UTR');
       return;
     }
-    
+
     if (!screenshot) {
       alert('Please upload a payment screenshot');
       return;
     }
-    
+
     // Check if last payment was within 30 minutes
     const now = new Date();
     const thirtyMinutesAgo = new Date(now.getTime() - 30 * 60000); // 30 minutes in milliseconds
-    
+
     if (lastPaymentTime && lastPaymentTime > thirtyMinutesAgo) {
       setShowTimeoutModal(true);
       return;
     }
-    
+
     setLoading(true);
-    
+
     try {
       const token = localStorage.getItem('token');
-      
+
       if (!token) {
         alert('Please login again');
         navigate('/login');
         return;
       }
-      
+
       // Create FormData to send both text data and file
       const formData = new FormData();
       formData.append('amount', amount.toString());
       formData.append('utrNumber', refNo.toString());
       formData.append('paymentScreenshot', screenshot);
-      
+
       console.log('=== DEPOSIT DEBUG INFO ===');
       console.log('Token exists:', !!token);
       console.log('Amount:', amount);
@@ -177,9 +177,9 @@ const UPIQRPayment = () => {
       for (let [key, value] of formData.entries()) {
         console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
       }
-      
+
       console.log('Sending request to server...');
-      
+
       // Use fetch instead of axios for better FormData handling
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/deposit/submit`, {
         method: 'POST',
@@ -188,14 +188,14 @@ const UPIQRPayment = () => {
         },
         body: formData
       });
-      
+
       console.log('Response status:', response.status);
       console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-      
+
       // Get response as text first to see what we're getting
       const responseText = await response.text();
       console.log('Raw response:', responseText.substring(0, 500));
-      
+
       // Try to parse as JSON
       let responseData;
       try {
@@ -204,13 +204,13 @@ const UPIQRPayment = () => {
         console.error('Failed to parse response as JSON:', parseError);
         throw new Error('Server returned invalid JSON: ' + responseText.substring(0, 200));
       }
-      
+
       if (!response.ok) {
         throw new Error(responseData.error || 'Failed to submit deposit');
       }
-      
+
       console.log('✅ Success:', responseData);
-      
+
       // Redirect to success page
       navigate('/payment/success');
     } catch (error) {
@@ -218,7 +218,7 @@ const UPIQRPayment = () => {
       console.error('Error response:', error.response?.data);
       console.error('Error status:', error.response?.status);
       console.error('Error headers:', error.response?.headers);
-      
+
       if (error.response && error.response.data && error.response.data.error) {
         alert(error.response.data.error);
       } else if (error.message) {
@@ -234,12 +234,12 @@ const UPIQRPayment = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      
+
 
       <div className="bg-gradient-to-r from-purple-600 to-purple-700 text-white py-6 shadow-sm">
         <div className="max-w-2xl mx-auto px-4 flex items-center">
-          <button 
-            onClick={() => navigate('/deposite')} 
+          <button
+            onClick={() => navigate('/deposite')}
             className="mr-4 p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
           >
             <ChevronLeft size={20} className="text-white" />
@@ -268,10 +268,15 @@ const UPIQRPayment = () => {
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                 </div>
               ) : qrCodeData && qrCodeData.qrImage ? (
-                <img 
+                <img
                   src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
-                  alt="QR Code" 
+                  alt="QR Code"
                   className="w-full h-full object-contain"
+                  crossOrigin="anonymous"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    console.log('❌ QR Image failed:', `${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`);
+                  }}
                 />
               ) : (
                 <div className="text-center text-gray-500">
@@ -350,19 +355,19 @@ const UPIQRPayment = () => {
               </span>
             </div>
           </div>
-          
+
           {/* Screenshot Upload */}
           <div className="mb-6">
             <h3 className="text-sm font-bold text-purple-600 mb-3">3. Upload Payment Screenshot</h3>
             <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center relative">
               {!screenshotPreview ? (
                 <div>
-                  <input 
+                  <input
                     id="screenshot-upload"
-                    type="file" 
-                    accept="image/*" 
+                    type="file"
+                    accept="image/*"
                     onChange={handleScreenshotChange}
-                    className="hidden" 
+                    className="hidden"
                   />
                   <div className="flex flex-col items-center justify-center gap-3">
                     <div className="p-3 bg-purple-100 rounded-full">
@@ -372,7 +377,7 @@ const UPIQRPayment = () => {
                       <p className="font-medium text-gray-700">Tap to upload screenshot</p>
                       <p className="text-xs text-gray-500 mt-1">JPG, PNG, GIF up to 5MB</p>
                     </div>
-                    <label 
+                    <label
                       htmlFor="screenshot-upload"
                       className="px-4 py-2 bg-purple-600 text-white text-xs font-bold rounded-lg cursor-pointer hover:bg-purple-700 transition-colors"
                     >
@@ -382,9 +387,9 @@ const UPIQRPayment = () => {
                 </div>
               ) : (
                 <div className="relative">
-                  <img 
-                    src={screenshotPreview} 
-                    alt="Screenshot preview" 
+                  <img
+                    src={screenshotPreview}
+                    alt="Screenshot preview"
                     className="max-h-48 mx-auto rounded-lg object-contain"
                   />
                   <button
@@ -401,16 +406,15 @@ const UPIQRPayment = () => {
               )}
             </div>
           </div>
-          
+
           {/* Submit Button */}
           <button
             onClick={handleSubmit}
             disabled={refNo.length !== 12 || !screenshot}
-            className={`w-full py-4 rounded font-semibold text-lg transition-all duration-200 shadow-sm hover:shadow-md ${
-              refNo.length === 12 && screenshot
-                ? 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white' 
+            className={`w-full py-4 rounded font-semibold text-lg transition-all duration-200 shadow-sm hover:shadow-md ${refNo.length === 12 && screenshot
+                ? 'bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white'
                 : 'bg-gray-400 text-gray-200 cursor-not-allowed'
-            }`}
+              }`}
           >
             Submit
           </button>
@@ -430,7 +434,7 @@ const UPIQRPayment = () => {
           </p>
         </div>
       </div>
-      
+
       {/* Timeout Modal */}
       {showTimeoutModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
@@ -442,11 +446,11 @@ const UPIQRPayment = () => {
               </h3>
             </div>
             <p className="text-gray-300 mb-6">
-              You can only make one payment every 30 minutes from the same channel. 
+              You can only make one payment every 30 minutes from the same channel.
               Please wait before making another payment.
             </p>
             <div className="flex justify-end">
-              <button 
+              <button
                 onClick={() => setShowTimeoutModal(false)}
                 className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-purple-500 text-white font-black rounded-xl hover:scale-105 transition-transform"
               >
