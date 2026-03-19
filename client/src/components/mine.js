@@ -27,7 +27,7 @@ const Mine = () => {
             ? JSON.parse(savedUserStr)
             : null;
         } catch (e) {
-          console.error('Invalid user in localStorage:', e);
+          // console.error('Invalid user in localStorage:', e);
           localStorage.removeItem('user'); // corrupt data clear karo
         }
         const token = localStorage.getItem('token');
@@ -91,7 +91,7 @@ const Mine = () => {
               todayEarning: quantifyRes.data.todayEarning
             });
           } catch (quantifyErr) {
-            console.error('Error fetching quantify data:', quantifyErr);
+            // console.error('Error fetching quantify data:', quantifyErr);
           }
         } else {
           // Fallback to localStorage data
@@ -138,15 +138,15 @@ const Mine = () => {
                   todayEarning: quantifyRes.data.todayEarning
                 });
               } catch (quantifyErr) {
-                console.error('Error fetching quantify data:', quantifyErr);
+                // console.error('Error fetching quantify data:', quantifyErr);
               }
             } catch (depositErr) {
-              console.error('Error fetching deposit history:', depositErr);
+              // console.error('Error fetching deposit history:', depositErr);
             }
           }
         }
       } catch (err) {
-        console.error('Error fetching user data:', err);
+        // console.error('Error fetching user data:', err);
         // Fallback to localStorage data on error
         const savedUserStr = localStorage.getItem('user');
         const savedUser = savedUserStr ? JSON.parse(savedUserStr) : {};
@@ -197,10 +197,10 @@ const Mine = () => {
                 todayEarning: quantifyRes.data.todayEarning
               });
             } catch (quantifyErr) {
-              console.error('Error fetching quantify data:', quantifyErr);
+              // console.error('Error fetching quantify data:', quantifyErr);
             }
           } catch (depositErr) {
-            console.error('Error fetching deposit history:', depositErr);
+            // console.error('Error fetching deposit history:', depositErr);
           }
         }
       } finally {

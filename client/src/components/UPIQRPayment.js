@@ -34,7 +34,7 @@ const UPIQRPayment = () => {
           setQrCodeData(generalQr);
         }
       } catch (error) {
-        console.error('Error fetching QR code:', error);
+        // console.error('Error fetching QR code:', error);
       } finally {
         setQrLoading(false);
       }
@@ -166,19 +166,19 @@ const UPIQRPayment = () => {
       formData.append('utrNumber', refNo.toString());
       formData.append('paymentScreenshot', screenshot);
 
-      console.log('=== DEPOSIT DEBUG INFO ===');
-      console.log('Token exists:', !!token);
-      console.log('Amount:', amount);
-      console.log('UTR:', refNo);
-      console.log('File name:', screenshot.name);
-      console.log('File size:', screenshot.size);
-      console.log('File type:', screenshot.type);
-      console.log('FormData entries:');
+      // console.log('=== DEPOSIT DEBUG INFO ===');
+      // console.log('Token exists:', !!token);
+      // console.log('Amount:', amount);
+      // console.log('UTR:', refNo);
+      // console.log('File name:', screenshot.name);
+      // console.log('File size:', screenshot.size);
+      // console.log('File type:', screenshot.type);
+      // console.log('FormData entries:');
       for (let [key, value] of formData.entries()) {
-        console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
+        // console.log(`  ${key}:`, value instanceof File ? `File(${value.name}, ${value.size} bytes)` : value);
       }
 
-      console.log('Sending request to server...');
+      // console.log('Sending request to server...');
 
       // Use fetch instead of axios for better FormData handling
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/deposit/submit`, {
@@ -189,19 +189,19 @@ const UPIQRPayment = () => {
         body: formData
       });
 
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      // console.log('Response status:', response.status);
+      // console.log('Response headers:', Object.fromEntries(response.headers.entries()));
 
       // Get response as text first to see what we're getting
       const responseText = await response.text();
-      console.log('Raw response:', responseText.substring(0, 500));
+      // console.log('Raw response:', responseText.substring(0, 500));
 
       // Try to parse as JSON
       let responseData;
       try {
         responseData = JSON.parse(responseText);
       } catch (parseError) {
-        console.error('Failed to parse response as JSON:', parseError);
+        // console.error('Failed to parse response as JSON:', parseError);
         throw new Error('Server returned invalid JSON: ' + responseText.substring(0, 200));
       }
 
@@ -209,15 +209,15 @@ const UPIQRPayment = () => {
         throw new Error(responseData.error || 'Failed to submit deposit');
       }
 
-      console.log('✅ Success:', responseData);
+      // console.log('✅ Success:', responseData);
 
       // Redirect to success page
       navigate('/payment/success');
     } catch (error) {
-      console.error('❌ Error submitting deposit:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
-      console.error('Error headers:', error.response?.headers);
+      // console.error('❌ Error submitting deposit:', error);
+      // console.error('Error response:', error.response?.data);
+      // console.error('Error status:', error.response?.status);
+      // console.error('Error headers:', error.response?.headers);
 
       if (error.response && error.response.data && error.response.data.error) {
         alert(error.response.data.error);
@@ -275,7 +275,7 @@ const UPIQRPayment = () => {
                   crossOrigin="anonymous"
                   onError={(e) => {
                     e.target.style.display = 'none';
-                    console.log('❌ QR Image failed:', `${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`);
+                    // console.log('❌ QR Image failed:', `${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`);
                   }}
                 />
               ) : (

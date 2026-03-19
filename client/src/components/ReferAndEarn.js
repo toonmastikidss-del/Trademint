@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Copy, Share2, Users, Gift, Trophy, ChevronLeft, CheckCircle, AlertCircle, Coins } from 'lucide-react';
+import { Copy, Share2, Users, Gift, Trophy, ChevronLeft, CheckCircle, AlertCircle, Coins, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../config/apiConfig';
 
@@ -16,55 +16,55 @@ const ReferAndEarn = () => {
     totalRewards: 0
   });
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const fetchReferralData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        if (!token) {
-          navigate('/login');
-          return;
-        }
+  const fetchReferralData = async (isManualRefresh = false) => {
+    try {
+      if (isManualRefresh) setRefreshing(true);
 
-        // Get referral code and share link
-        const codeResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/referral/my-code`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        // Fix the share link to use frontend URL (port 3000)
-        const frontendUrl = window.location.origin;
-        const fixedShareLink = `${frontendUrl}/register?ref=${codeResponse.data.referralCode}`;
-        
-        setReferralCode(codeResponse.data.referralCode);
-        setShareLink(fixedShareLink);
-
-        // Get referral statistics
-        const statsResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/referral/stats`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-        setStats({
-          totalReferrals: statsResponse.data.totalReferrals,
-          completedReferrals: statsResponse.data.completedReferrals,
-          pendingReferrals: statsResponse.data.pendingReferrals,
-          totalRewards: statsResponse.data.totalRewards
-        });
-
-        setLoading(false);
-      } catch (err) {
-        console.error('Error fetching referral data:', err);
-        setError('Failed to load referral data');
-        setLoading(false);
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
       }
-    };
 
+      // Get referral code and share link
+      const codeResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/referral/my-code`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const frontendUrl = window.location.origin;
+      const fixedShareLink = `${frontendUrl}/register?ref=${codeResponse.data.referralCode}`;
+
+      setReferralCode(codeResponse.data.referralCode);
+      setShareLink(fixedShareLink);
+
+      // Get referral statistics
+      const statsResponse = await axios.get(`${API_CONFIG.BASE_URL}/api/referral/stats`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      setStats({
+        totalReferrals: statsResponse.data.totalReferrals,
+        completedReferrals: statsResponse.data.completedReferrals,
+        pendingReferrals: statsResponse.data.pendingReferrals,
+        totalRewards: statsResponse.data.totalRewards
+      });
+
+      setError('');
+    } catch (err) {
+      console.error('Error fetching referral data:', err);
+      setError('Failed to load referral data');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  // ✅ Sirf ek baar fetch — mount pe
+  useEffect(() => {
     fetchReferralData();
-    
-    // Auto-refresh every 5 seconds for real-time updates
-    const interval = setInterval(fetchReferralData, 5000);
-    
-    return () => clearInterval(interval);
   }, [navigate]);
 
   const handleCopyCode = () => {
@@ -75,13 +75,14 @@ const ReferAndEarn = () => {
   };
 
   const handleShare = async () => {
-    const shareMessage = `🎉 Join TradeMint with my referral code: ${referralCode}\n\n` +
+    const shareMessage =
+      `🎉 Join TradeMint with my referral code: ${referralCode}\n\n` +
       `💰 Get 6% DAILY INTEREST on your investments!\n` +
       `✅ NO WITHDRAWAL LIMIT - Withdraw anytime!\n` +
       `🚀 Start earning passive income now!\n\n` +
       `Register here: ${shareLink}\n\n` +
       `Use code: ${referralCode} for bonus rewards! 🔥`;
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -93,8 +94,6 @@ const ReferAndEarn = () => {
         console.log('Error sharing:', err);
       }
     } else {
-      // Fallback to copy link and message
-      const fullText = `${shareMessage}\n\n(Copied to clipboard!)`;
       navigator.clipboard.writeText(shareMessage).then(() => {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
@@ -119,10 +118,24 @@ const ReferAndEarn = () => {
           <ChevronLeft size={24} className="text-gray-300" />
         </button>
         <h1 className="text-lg font-bold tracking-tight">Refer & Earn</h1>
-        <div className="w-10"></div>
+        {/* ✅ Manual Refresh Button */}
+        <button
+          onClick={() => fetchReferralData(true)}
+          disabled={refreshing}
+          className="p-2 text-[#49bace] disabled:opacity-50"
+        >
+          <RefreshCw size={20} className={refreshing ? 'animate-spin' : ''} />
+        </button>
       </div>
 
       <div className="px-4 pt-6">
+        {/* Error Message */}
+        {error && (
+          <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+            <p className="text-rose-400 text-sm font-bold text-center">{error}</p>
+          </div>
+        )}
+
         {/* Reward Banner */}
         <div className="bg-gradient-to-r from-[#49bace] to-emerald-500 rounded-2xl p-6 mb-6 shadow-2xl relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full"></div>
@@ -161,7 +174,7 @@ const ReferAndEarn = () => {
             </div>
             <p className="text-2xl font-bold text-white">{stats.totalReferrals}</p>
           </div>
-          
+
           <div className="bg-[#212431] border border-gray-700 rounded-2xl p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Trophy className="w-5 h-5 text-emerald-500" />
@@ -169,7 +182,7 @@ const ReferAndEarn = () => {
             </div>
             <p className="text-2xl font-bold text-emerald-500">{stats.completedReferrals}</p>
           </div>
-          
+
           <div className="bg-[#212431] border border-gray-700 rounded-2xl p-4">
             <div className="flex items-center space-x-2 mb-2">
               <AlertCircle className="w-5 h-5 text-amber-500" />
@@ -177,7 +190,7 @@ const ReferAndEarn = () => {
             </div>
             <p className="text-2xl font-bold text-amber-500">{stats.pendingReferrals}</p>
           </div>
-          
+
           <div className="bg-[#212431] border border-gray-700 rounded-2xl p-4">
             <div className="flex items-center space-x-2 mb-2">
               <Coins className="w-5 h-5 text-yellow-500" />
@@ -190,13 +203,13 @@ const ReferAndEarn = () => {
         {/* Referral Code Section */}
         <div className="bg-[#212431] border border-gray-700 rounded-2xl p-6 mb-6">
           <h3 className="text-white font-bold text-lg mb-4 text-center">Your Referral Code</h3>
-          
+
           <div className="bg-[#101821] rounded-xl p-4 mb-4 border border-gray-700">
             <div className="flex items-center justify-between">
               <span className="text-2xl font-mono font-bold text-[#49bace] tracking-wider">
                 {referralCode}
               </span>
-              <button 
+              <button
                 onClick={handleCopyCode}
                 className="p-2 bg-[#49bace] rounded-lg hover:bg-[#3da9bd] transition-colors"
               >
@@ -205,7 +218,7 @@ const ReferAndEarn = () => {
             </div>
           </div>
 
-          <button 
+          <button
             onClick={handleShare}
             className="w-full bg-gradient-to-r from-[#49bace] to-emerald-500 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-2 hover:scale-[1.02] transition-transform mb-4"
           >
@@ -213,7 +226,7 @@ const ReferAndEarn = () => {
             <span>Share with Friends</span>
           </button>
 
-          <button 
+          <button
             onClick={() => navigate('/team')}
             className="w-full bg-[#212431] border border-gray-700 text-white font-bold py-4 rounded-xl flex items-center justify-center space-x-2 hover:bg-[#2a2d3a] transition-colors"
           >
@@ -225,29 +238,13 @@ const ReferAndEarn = () => {
         {/* How to Earn Section */}
         <div className="bg-[#212431] border border-gray-700 rounded-2xl p-6">
           <h3 className="text-white font-bold text-lg mb-4 text-center">How to Earn More</h3>
-          
+
           <div className="space-y-4">
             {[
-              {
-                step: '1',
-                title: 'Share Your Code',
-                description: 'Send your referral code to friends and family'
-              },
-              {
-                step: '2',
-                title: 'They Sign Up',
-                description: 'Friends register using your referral code'
-              },
-              {
-                step: '3',
-                title: 'They Deposit',
-                description: 'Friends make their first deposit of any amount'
-              },
-              {
-                step: '4',
-                title: 'You Earn ₹100',
-                description: 'Reward automatically added to your quantify balance'
-              }
+              { step: '1', title: 'Share Your Code', description: 'Send your referral code to friends and family' },
+              { step: '2', title: 'They Sign Up', description: 'Friends register using your referral code' },
+              { step: '3', title: 'They Deposit', description: 'Friends make their first deposit of any amount' },
+              { step: '4', title: 'You Earn ₹100', description: 'Reward automatically added to your quantify balance' }
             ].map((item, index) => (
               <div key={index} className="flex items-start space-x-4">
                 <div className="flex-shrink-0 w-8 h-8 bg-[#49bace] rounded-full flex items-center justify-center text-white font-bold text-sm">

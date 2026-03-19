@@ -80,7 +80,7 @@ const Deposit = () => {
 
         setApprovedDepositAmount(approvedAmount);
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        // console.error('Error fetching user data:', error);
       }
     }
   };
@@ -94,9 +94,9 @@ const Deposit = () => {
       const result = await checkBalanceChange();
 
       if (result.detected) {
-        console.log('💰 Deposit page detected balance change!');
-        console.log('Old Balance:', result.oldBalance);
-        console.log('New Balance:', result.newBalance);
+        // console.log('💰 Deposit page detected balance change!');
+        // console.log('Old Balance:', result.oldBalance);
+        // console.log('New Balance:', result.newBalance);
 
         // Update displayed balance
         setBalance(result.newBalance.toFixed(2));
@@ -106,7 +106,7 @@ const Deposit = () => {
         });
 
         // Show visual feedback (optional - can be removed if not needed)
-        console.log('✅ Balance updated on Deposit page');
+        // console.log('✅ Balance updated on Deposit page');
 
         setLastBalanceCheck(result.newBalance);
       }
@@ -117,7 +117,7 @@ const Deposit = () => {
 
     // Also listen for custom balance update events
     const handleBalanceUpdate = (event) => {
-      console.log('📢 Balance update event received on Deposit page:', event.detail);
+      // console.log('📢 Balance update event received on Deposit page:', event.detail);
       detectBalanceChange();
     };
 
@@ -171,7 +171,7 @@ const Deposit = () => {
       if (!user?._id) return; // extra safety
 
       if (!token || !user) {
-        console.error('User not authenticated');
+        // console.error('User not authenticated');
         return;
       }
 
@@ -185,11 +185,11 @@ const Deposit = () => {
       if (Array.isArray(response.data)) {
         setDepositHistory(response.data);
       } else {
-        console.error('Unexpected response format:', response.data);
+        // console.error('Unexpected response format:', response.data);
         setDepositHistory([]); // Fallback to empty array
       }
     } catch (error) {
-      console.error('Error fetching deposit history:', error);
+      // console.error('Error fetching deposit history:', error);
       setDepositHistory([]); // Ensure it's an empty array on error
     } finally {
       setLoadingHistory(false);

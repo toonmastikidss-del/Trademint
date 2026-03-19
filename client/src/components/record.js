@@ -23,13 +23,13 @@ const Record = () => {
         try {
           savedUser = JSON.parse(savedUserStr);
         } catch (parseError) {
-          console.error('Error parsing user data from localStorage:', parseError);
+          // console.error('Error parsing user data from localStorage:', parseError);
           savedUser = null;
         }
       }
       
       if (!token || !savedUser) {
-        console.error('User not authenticated');
+        // console.error('User not authenticated');
         setTransactions([]); // Ensure transactions is an empty array
         return;
       }
@@ -44,7 +44,7 @@ const Record = () => {
         });
         withdrawalData = Array.isArray(withdrawalRes.data) ? withdrawalRes.data : [];
       } catch (error) {
-        console.error('Error fetching withdrawals:', error);
+        // console.error('Error fetching withdrawals:', error);
         withdrawalData = [];
       }
       
@@ -56,7 +56,7 @@ const Record = () => {
         });
         depositData = Array.isArray(depositRes.data) ? depositRes.data : [];
       } catch (error) {
-        console.error('Error fetching deposits:', error);
+        // console.error('Error fetching deposits:', error);
         depositData = [];
       }
       
@@ -67,9 +67,9 @@ const Record = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         rewardHistory = rewardRes.data.rewards || [];
-        console.log('Fetched task reward history records:', rewardHistory.length);
+        // console.log('Fetched task reward history records:', rewardHistory.length);
       } catch (err) {
-        console.log('Task reward history not available');
+        // console.log('Task reward history not available');
       }
       
       // Fetch referral reward history
@@ -90,9 +90,9 @@ const Record = () => {
             refereePhone: ref.refereeId?.phone || 'N/A'
           }));
         
-        console.log('Fetched referral reward records:', referralRewards.length);
+        // console.log('Fetched referral reward records:', referralRewards.length);
       } catch (err) {
-        console.log('Referral rewards not available');
+        // console.log('Referral rewards not available');
       }
       
       // Fetch ALL user's quantify history (not just daily, but all historical records)
@@ -103,9 +103,9 @@ const Record = () => {
           headers: { Authorization: `Bearer ${token}` }
         });
         tradeHistory = historyRes.data.history || [];
-        console.log('Fetched trade history records:', tradeHistory.length);
+        // console.log('Fetched trade history records:', tradeHistory.length);
       } catch (err) {
-        console.log('Quantify history not available');
+        // console.log('Quantify history not available');
       }
       
       // Process and combine all transaction data
@@ -245,7 +245,7 @@ const Record = () => {
           }
         }
       } catch (err) {
-        console.log('Current quantify data not available');
+        // console.log('Current quantify data not available');
       }
       
       // Sort by date (newest first)
@@ -254,7 +254,7 @@ const Record = () => {
       setTransactions(allTransactions);
       
     } catch (error) {
-      console.error('Error fetching transaction data:', error);
+      // console.error('Error fetching transaction data:', error);
       // Fallback to demo data on error
       setTransactions(getDemoData());
     }

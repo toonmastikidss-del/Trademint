@@ -20,7 +20,7 @@ const Task = () => {
       const response = await axios.get(`${API_CONFIG.BASE_URL}/api/task/active`);
       setTasks(response.data);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      // console.error('Error fetching tasks:', error);
       // Fallback to sample data if API fails
       const sampleTasks = [
         {
@@ -75,7 +75,7 @@ const Task = () => {
       });
       setUserTasks(response.data);
     } catch (error) {
-      console.error('Error fetching user tasks:', error);
+      // console.error('Error fetching user tasks:', error);
       setUserTasks([]);
     }
   };
