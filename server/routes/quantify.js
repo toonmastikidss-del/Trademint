@@ -76,19 +76,29 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
       await quantifyData.save();
     }
     
-    // Check if it's a new day (midnight reset already happened)
+    // ✅ IMPROVED: Check karo ki cron job ne reset kiya ya nahi
+    // Agar lastResetDate aaj ki hai toh cron job already reset kar chuka hai
+    // Agar nahi hai toh backup reset karo (safety net)
     const now = new Date();
     const lastReset = quantifyData.lastResetDate;
-    const isNewDay = !lastReset || 
-      new Date(lastReset).toDateString() !== now.toDateString();
+
+    // IST mein date compare karo
+    const toISTDateString = (date) => {
+      return new Date(date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' });
+    };
+
+    const todayIST = toISTDateString(now);
+    const lastResetIST = lastReset ? toISTDateString(lastReset) : null;
+
+    const isNewDay = !lastResetIST || lastResetIST !== todayIST;
     
     // Only reset if it's a new day AND quantifying was not active
-    // If user was already quantifying, preserve that state even on new day
-    // Also skip reset if there was recent activity (deposit/withdrawal) in the last minute
     const hasRecentActivity = quantifyData.lastActivityDate && 
       (now - new Date(quantifyData.lastActivityDate)) < 60000; // 1 minute
     
     if (isNewDay && !quantifyData.isQuantifying && !hasRecentActivity) {
+      console.log('⚠️ BACKUP RESET: Cron job missed, resetting now for user:', userId);
+      
       // Save yesterday's history before resetting
       if (quantifyData.totalRevenue > 0 && quantifyData.todayEarning > 0) {
         await QuantifyHistory.create({
@@ -111,6 +121,8 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
       quantifyData.lastResetDate = now;
       quantifyData.lastActivityDate = now;
       await quantifyData.save();
+
+      console.log('✅ BACKUP RESET: Done for user:', userId);
     }
     
     console.log('=== GET /user/:userId ===');
@@ -264,8 +276,6 @@ router.post('/midnight-reset', authenticateToken, async (req, res) => {
     });
     
     // ⭐ NOTE: user.quantify column update has been disabled
-    // Previously this was updating at 11:59 PM with totalRevenue
-    // Now quantify will only be updated on deposit/withdrawal/task events
     const user = await User.findById(userId);
     if (user) {
       console.log('✅ MIDNIGHT RESET: user.quantify update skipped (disabled by system config)');
@@ -361,11 +371,10 @@ router.get('/check-24hrs', authenticateToken, async (req, res) => {
     const quantifyData = await Quantify.findOne({ userId });
     
     if (!quantifyData || !quantifyData.createdAt) {
-      // User hasn't started quantifying yet
       return res.json({
         hasCompleted24Hours: false,
         hoursRemaining: 24,
-        secondsRemaining: 24 * 60 * 60, // 24 hours in seconds
+        secondsRemaining: 24 * 60 * 60,
         message: 'Please start quantifying first'
       });
     }
@@ -406,14 +415,13 @@ router.post('/debug/create-test-history', authenticateToken, async (req, res) =>
   try {
     const userId = req.user.id;
     
-    // Create a fake history record for testing
     const testHistory = await QuantifyHistory.create({
       userId,
       date: new Date(),
       mode: 'current',
       startingBalance: 1000,
       startingTotalRevenue: 1000,
-      earning: 60, // 6% of 1000
+      earning: 60,
       endingTotalRevenue: 1060,
       isQuantifyingActive: false,
       hadDepositOrWithdrawal: false

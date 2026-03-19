@@ -7,6 +7,7 @@ const path = require('path');
 const fileUpload = require('express-fileupload');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cron = require('node-cron'); // ✅ ADDED
 
 const Admin = require('./models/Admin');
 const QRCode = require('./models/QRCode');
@@ -107,8 +108,6 @@ const createInitialAdmin = async () => {
       
       await admin.save();
       console.log('✅ Initial admin user created successfully');
-      // console.log('Username: 7027019576');
-      // console.log('Password: Qwmusty%%@!FFSms');
     } else {
       console.log('✅ Admin user already exists');
     }
@@ -119,29 +118,78 @@ const createInitialAdmin = async () => {
 
 // Connect to MongoDB with proper error handling
 mongoose.connect(process.env.MONGO_URI, {
-  serverSelectionTimeoutMS: 5000, // Timeout after 5 seconds
-  socketTimeoutMS: 45000, // Socket timeout
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
 })
     .then(async () => {
       console.log('✅ MongoDB Connected Successfully');
-      // Create initial admin after DB connection
       await createInitialAdmin();
     })
     .catch(err => {
       console.error('❌ MongoDB Connection Error:', err.message);
       console.error('Please check your MONGO_URI environment variable and network connection');
-      process.exit(1); // Exit if database connection fails
+      process.exit(1);
     });
-
-// Serve static files from React app in production
-// if (process.env.NODE_ENV === 'production') {
-//   app.use(express.static(path.join(__dirname, '../client/build')));
-  
-//   // Handle React routing, return all requests to React app
-//   app.get('*', (req, res) => {
-//     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
-//   });
-// }
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// ✅ MIDNIGHT RESET CRON JOB - Har raat 12:00 AM IST par automatically chalega
+// Chahe user app open rakhe ya na rakhe - server side se hoga
+cron.schedule('0 0 * * *', async () => {
+  console.log('🌙 Cron Job: Midnight reset starting...');
+
+  try {
+    const Quantify = require('./models/Quantify');
+    const QuantifyHistory = require('./models/QuantifyHistory');
+
+    const allQuantifyData = await Quantify.find({});
+
+    console.log(`📊 Total users to reset: ${allQuantifyData.length}`);
+
+    const now = new Date();
+
+    for (const quantifyData of allQuantifyData) {
+      try {
+        // History save karo agar aaj ki earning thi
+        if (quantifyData.todayEarning > 0) {
+          await QuantifyHistory.create({
+            userId: quantifyData.userId,
+            date: now,
+            mode: quantifyData.mode,
+            startingBalance: quantifyData.balance,
+            startingTotalRevenue: quantifyData.totalRevenue - quantifyData.todayEarning,
+            earning: quantifyData.todayEarning,
+            endingTotalRevenue: quantifyData.totalRevenue,
+            isQuantifyingActive: quantifyData.isQuantifying,
+            hadDepositOrWithdrawal: false
+          });
+          console.log(`✅ History saved for user: ${quantifyData.userId}`);
+        }
+
+        // Reset karo naye din ke liye
+        quantifyData.todayEarning = 0;
+        quantifyData.isQuantifying = false;
+        quantifyData.mode = 'continue';
+        quantifyData.lastResetDate = now;
+        quantifyData.lastActivityDate = now;
+        await quantifyData.save();
+
+        console.log(`🔄 Reset done for user: ${quantifyData.userId}`);
+
+      } catch (userError) {
+        console.error(`❌ Error resetting user ${quantifyData.userId}:`, userError);
+      }
+    }
+
+    console.log('✅ Cron Job: Midnight reset completed for all users!');
+
+  } catch (error) {
+    console.error('❌ Cron Job: Midnight reset failed:', error);
+  }
+
+}, {
+  timezone: "Asia/Kolkata" // ✅ Indian Standard Time
+});
+
+console.log('✅ Midnight reset cron job scheduled (runs at 12:00 AM IST daily)');

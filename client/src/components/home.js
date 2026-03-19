@@ -119,6 +119,9 @@ const Home = () => {
     { name: "Amit Gupta", rating: 5, comment: "I received my withdrawal within 10 minutes. Trusted app!", gender: "M" },
     { name: "Sneha Reddy", rating: 5, comment: "Very secure and reliable. I love the user experience here.", gender: "F" },
     { name: "Vikram Singh", rating: 4, comment: "Great support team and clear instructions for everything.", gender: "M" },
+    { name: "Ananya Das", rating: 5, comment: "Amazing platform! My earnings have doubled since I joined.", gender: "F" },
+    { name: "Rohan Mehta", rating: 5, comment: "Super fast withdrawals and excellent customer support.", gender: "M" },
+    { name: "Divya Nair", rating: 4, comment: "Love the transparency and security features of this app.", gender: "F" },
   ];
 
   const data = [
@@ -132,10 +135,18 @@ const Home = () => {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setActiveTestimonial((prev) => (prev + 1) % testimonialData.length);
-    }, 30000);
+      // Generate random index instead of sequential
+      setActiveTestimonial((prev) => {
+        let newIndex;
+        do {
+          newIndex = Math.floor(Math.random() * testimonialData.length);
+        } while (newIndex === prev && testimonialData.length > 1);
+        return newIndex;
+      });
+    }, 8000); // Changed from 30000ms to 8000ms for faster rotation
     return () => clearInterval(interval);
   }, [testimonialData.length]);
+
 
   const navigate = useNavigate();
 
@@ -353,7 +364,7 @@ const Home = () => {
           {testimonialData.map((t, index) => (
             <div 
               key={index} 
-              className={`absolute inset-0 w-full transition-all duration-1000 transform ${
+              className={`absolute inset-0 w-full transition-all duration-700 transform ${
                 index === activeTestimonial 
                 ? "translate-x-0 opacity-100" 
                 : "translate-x-full opacity-0"
@@ -396,3 +407,6 @@ const Home = () => {
 }
 
 export default Home;
+
+
+
