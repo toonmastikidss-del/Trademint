@@ -14,12 +14,16 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [remember, setRemember] = useState(false);
   const [modal, setModal] = useState({ isOpen: false, message: '', type: '' });
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate()
 
   const handleSelect = (option) => {
     setSelected(option);
   }
   const handleLogin = async () => {
+    // Prevent multiple submissions
+    if (isLoading) return;
+
     try {
       // Validate phone number if phone login is selected
       if (selected === 'phone') {
@@ -35,6 +39,9 @@ const Login = () => {
           return;
         }
       }
+      
+      // Start loading
+      setIsLoading(true);
       
       const payload = selected === 'phone' ? { phone, password } : { email, password };
       const res = await axios.post(`${API_CONFIG.BASE_URL}/api/auth/login`, payload);
@@ -54,6 +61,9 @@ const Login = () => {
         message: err.response?.data?.message || 'Login failed', 
         type: 'error' 
       });
+    } finally {
+      // Stop loading
+      setIsLoading(false);
     }
   };
 
@@ -194,9 +204,21 @@ const Login = () => {
         <div className='space-y-8 pt-4'>
           <button 
             onClick={handleLogin}
-            className='w-full bg-gradient-to-r from-blue-700 to-blue-500 text-white py-5 rounded-[2.5rem] font-bold text-[13px] uppercase tracking-[0.25em] shadow-[0_20px_40px_rgba(37,99,235,0.25)] hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300'
+            disabled={isLoading}
+            className={`w-full bg-gradient-to-r from-blue-700 to-blue-500 text-white py-5 rounded-[2.5rem] font-bold text-[13px] uppercase tracking-[0.25em] shadow-[0_20px_40px_rgba(37,99,235,0.25)] transition-all duration-300 flex items-center justify-center ${
+              isLoading 
+                ? 'opacity-70 cursor-not-allowed hover:shadow-[0_20px_40px_rgba(37,99,235,0.25)] hover:-translate-y-0' 
+                : 'hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0'
+            }`}
           >
-            Authenticate
+            {isLoading ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Authenticating...</span>
+              </div>
+            ) : (
+              'Authenticate'
+            )}
           </button>
           
           <div className='flex flex-col items-center space-y-4'>

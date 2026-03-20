@@ -104,8 +104,8 @@ const QuantifyHistory = () => {
     return (
       <div className="bg-[#101821] min-h-screen text-white pb-32 font-sans">
         <div className="sticky top-0 z-50 bg-[#312c42] px-4 py-4 flex items-center justify-between shadow-lg">
-          <button onClick={() => navigate('/mine')} className="p-1">
           <button onClick={() => window.history.back()} className='p-1'>
+            <ChevronLeft size={24} color="#fff" />
           </button>
           <h1 className="text-lg font-bold tracking-tight">Quantify History</h1>
           <div className="w-6"></div>
@@ -122,8 +122,8 @@ const QuantifyHistory = () => {
     <div className="bg-[#101821] min-h-screen text-white pb-32 font-sans">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#312c42] px-4 py-4 flex items-center justify-between shadow-lg">
-        <button onClick={() => navigate('/mine')} className="p-1">
         <button onClick={() => window.history.back()} className='p-1'>
+          <ChevronLeft size={24} color="#fff" />
         </button>
         <h1 className="text-lg font-bold tracking-tight">Quantify History</h1>
         <div className="w-6"></div>

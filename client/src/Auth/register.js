@@ -17,6 +17,7 @@ const Register = () => {
   const [modal, setModal] = useState({ isOpen: false, message: '', type: '' });
   const [generatedName, setGeneratedName] = useState('');
   const [referralCode, setReferralCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -59,6 +60,9 @@ const Register = () => {
   }, [phone, email, selected]);
 
   const handleRegister = async () => {
+    // Prevent multiple submissions
+    if (isLoading) return;
+
     if (!policy) {
       setModal({ isOpen: true, message: 'Please accept the Terms & Conditions', type: 'error' });
       return;
@@ -84,6 +88,9 @@ const Register = () => {
     }
 
     try {
+      // Start loading
+      setIsLoading(true);
+      
       const payload = selected === 'phone' ? { phone, password } : { email, password };
       
       // Add referral code if provided
@@ -122,6 +129,9 @@ const Register = () => {
         message: err.response?.data?.message || 'Registration failed', 
         type: 'error' 
       });
+    } finally {
+      // Stop loading
+      setIsLoading(false);
     }
   };
 
@@ -311,9 +321,21 @@ const Register = () => {
         <div className='space-y-8 pt-4'>
           <button 
             onClick={handleRegister}
-            className='w-full bg-gradient-to-r from-blue-700 to-blue-500 text-white py-5 rounded-[2.5rem] font-bold text-[13px] uppercase tracking-[0.25em] shadow-[0_20px_40px_rgba(37,99,235,0.25)] hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-300'
+            disabled={isLoading}
+            className={`w-full bg-gradient-to-r from-blue-700 to-blue-500 text-white py-5 rounded-[2.5rem] font-bold text-[13px] uppercase tracking-[0.25em] shadow-[0_20px_40px_rgba(37,99,235,0.25)] transition-all duration-300 flex items-center justify-center ${
+              isLoading 
+                ? 'opacity-70 cursor-not-allowed hover:shadow-[0_20px_40px_rgba(37,99,235,0.25)] hover:-translate-y-0' 
+                : 'hover:shadow-blue-500/40 hover:-translate-y-0.5 active:translate-y-0'
+            }`}
           >
-            Create Account
+            {isLoading ? (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Creating Account...</span>
+              </div>
+            ) : (
+              'Create Account'
+            )}
           </button>
           
           <div className='flex flex-col items-center space-y-4'>

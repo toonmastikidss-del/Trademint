@@ -60,6 +60,62 @@ const Home = () => {
   const [selectedMarket, setSelectedMarket] = useState('Cryptocoin');
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
+  // ─── Static data ────────────────────────────────────────────────────────────
+
+  const withData = [
+    { username: "MEMBER_10001_OFT", phone: "98765*****", amount: "15,000" },
+    { username: "MEMBER_10002_OFT", phone: "87654*****", amount: "8,500" },
+    { username: "MEMBER_10003_OFT", phone: "76543*****", amount: "20,000" },
+    { username: "MEMBER_10004_OFT", phone: "95432*****", amount: "400" },
+    { username: "MEMBER_10005_OFT", phone: "84321*****", amount: "650" },
+    { username: "MEMBER_10006_OFT", phone: "73210*****", amount: "850" },
+    { username: "MEMBER_10007_OFT", phone: "92108*****", amount: "950" },
+    { username: "MEMBER_10008_OFT", phone: "81097*****", amount: "350" },
+    { username: "MEMBER_10009_OFT", phone: "70986*****", amount: "550" },
+    { username: "MEMBER_10010_OFT", phone: "89875*****", amount: "750" },
+    { username: "MEMBER_10011_OFT", phone: "78764*****", amount: "450" },
+    { username: "MEMBER_10012_OFT", phone: "67653*****", amount: "780" },
+    { username: "MEMBER_10013_OFT", phone: "96542*****", amount: "920" },
+    { username: "MEMBER_10014_OFT", phone: "85431*****", amount: "520" },
+    { username: "MEMBER_10015_OFT", phone: "74320*****", amount: "680" },
+    { username: "MEMBER_10016_OFT", phone: "63219*****", amount: "250" },
+    { username: "MEMBER_10017_OFT", phone: "52108*****", amount: "1,350" },
+    { username: "MEMBER_10018_OFT", phone: "91097*****", amount: "800" },
+    { username: "MEMBER_10019_OFT", phone: "80986*****", amount: "1,750" },
+    { username: "MEMBER_10020_OFT", phone: "69875*****", amount: "450" },
+    { username: "MEMBER_10021_OFT", phone: "58764*****", amount: "1,050" },
+    { username: "MEMBER_10022_OFT", phone: "47653*****", amount: "680" },
+    { username: "MEMBER_10023_OFT", phone: "36542*****", amount: "1,550" },
+    { username: "MEMBER_10024_OFT", phone: "25431*****", amount: "320" },
+    { username: "MEMBER_10025_OFT", phone: "14320*****", amount: "1,200" },
+    { username: "MEMBER_10026_OFT", phone: "93219*****", amount: "750" },
+    { username: "MEMBER_10027_OFT", phone: "82108*****", amount: "1,850" },
+    { username: "MEMBER_10028_OFT", phone: "71097*****", amount: "580" },
+    { username: "MEMBER_10029_OFT", phone: "60986*****", amount: "1,450" },
+    { username: "MEMBER_10030_OFT", phone: "59875*****", amount: "920" },
+    { username: "MEMBER_10031_OFT", phone: "48764*****", amount: "1,600" },
+    { username: "MEMBER_10032_OFT", phone: "37653*****", amount: "280" },
+    { username: "MEMBER_10033_OFT", phone: "26542*****", amount: "1,150" },
+    { username: "MEMBER_10034_OFT", phone: "15431*****", amount: "650" },
+    { username: "MEMBER_10035_OFT", phone: "94320*****", amount: "1,950" },
+    { username: "MEMBER_10036_OFT", phone: "83219*****", amount: "420" },
+    { username: "MEMBER_10037_OFT", phone: "72108*****", amount: "1,300" },
+    { username: "MEMBER_10038_OFT", phone: "61097*****", amount: "880" },
+    { username: "MEMBER_10039_OFT", phone: "50986*****", amount: "1,700" },
+    { username: "MEMBER_10040_OFT", phone: "49875*****", amount: "100" },
+  ];
+
+  const testimonialData = [
+    { name: "Rahul Sharma",  rating: 5, comment: "Best platform for quick earnings. Highly recommended!", gender: "M" },
+    { name: "Priya Patel",   rating: 4, comment: "Interface is very smooth and deposit process is instant.", gender: "F" },
+    { name: "Amit Gupta",    rating: 5, comment: "I received my withdrawal within 10 minutes. Trusted app!", gender: "M" },
+    { name: "Sneha Reddy",   rating: 5, comment: "Very secure and reliable. I love the user experience here.", gender: "F" },
+    { name: "Vikram Singh",  rating: 4, comment: "Great support team and clear instructions for everything.", gender: "M" },
+    { name: "Ananya Das",    rating: 5, comment: "Amazing platform! My earnings have doubled since I joined.", gender: "F" },
+    { name: "Rohan Mehta",   rating: 5, comment: "Super fast withdrawals and excellent customer support.", gender: "M" },
+    { name: "Divya Nair",    rating: 4, comment: "Love the transparency and security features of this app.", gender: "F" },
+  ];
+
   // Refs so we can cleanup properly
   const wsRef           = useRef(null);   // WebSocket instance
   const pollIntervalRef = useRef(null);   // setInterval for non-crypto markets
@@ -189,6 +245,11 @@ const Home = () => {
     };
   }, [selectedMarket]);
 
+  const maskUsername = (username) => {
+    if (username.length <= 5) return username;
+    return username.slice(0, -5) + "*****";
+  };
+
   // ── Testimonial rotation ──────────────────────────────────────────────────
   useEffect(() => {
     const interval = setInterval(() => {
@@ -200,7 +261,7 @@ const Home = () => {
       });
     }, 8000);
     return () => clearInterval(interval);
-  }, [testimonialData.length]);
+  }, []);
 
   const navigate   = useNavigate();
   const isLoggedIn = !!localStorage.getItem('token');
@@ -215,66 +276,7 @@ const Home = () => {
 
   const marketItems = ['Stock', 'Cryptocoin', 'Bonds', 'Forex'];
 
-  // ─── Static data ────────────────────────────────────────────────────────────
 
-  const withData = [
-    { username: "MEMBER_10001_OFT", phone: "98765*****", amount: "15,000" },
-    { username: "MEMBER_10002_OFT", phone: "87654*****", amount: "8,500" },
-    { username: "MEMBER_10003_OFT", phone: "76543*****", amount: "20,000" },
-    { username: "MEMBER_10004_OFT", phone: "95432*****", amount: "400" },
-    { username: "MEMBER_10005_OFT", phone: "84321*****", amount: "650" },
-    { username: "MEMBER_10006_OFT", phone: "73210*****", amount: "850" },
-    { username: "MEMBER_10007_OFT", phone: "92108*****", amount: "950" },
-    { username: "MEMBER_10008_OFT", phone: "81097*****", amount: "350" },
-    { username: "MEMBER_10009_OFT", phone: "70986*****", amount: "550" },
-    { username: "MEMBER_10010_OFT", phone: "89875*****", amount: "750" },
-    { username: "MEMBER_10011_OFT", phone: "78764*****", amount: "450" },
-    { username: "MEMBER_10012_OFT", phone: "67653*****", amount: "780" },
-    { username: "MEMBER_10013_OFT", phone: "96542*****", amount: "920" },
-    { username: "MEMBER_10014_OFT", phone: "85431*****", amount: "520" },
-    { username: "MEMBER_10015_OFT", phone: "74320*****", amount: "680" },
-    { username: "MEMBER_10016_OFT", phone: "63219*****", amount: "250" },
-    { username: "MEMBER_10017_OFT", phone: "52108*****", amount: "1,350" },
-    { username: "MEMBER_10018_OFT", phone: "91097*****", amount: "800" },
-    { username: "MEMBER_10019_OFT", phone: "80986*****", amount: "1,750" },
-    { username: "MEMBER_10020_OFT", phone: "69875*****", amount: "450" },
-    { username: "MEMBER_10021_OFT", phone: "58764*****", amount: "1,050" },
-    { username: "MEMBER_10022_OFT", phone: "47653*****", amount: "680" },
-    { username: "MEMBER_10023_OFT", phone: "36542*****", amount: "1,550" },
-    { username: "MEMBER_10024_OFT", phone: "25431*****", amount: "320" },
-    { username: "MEMBER_10025_OFT", phone: "14320*****", amount: "1,200" },
-    { username: "MEMBER_10026_OFT", phone: "93219*****", amount: "750" },
-    { username: "MEMBER_10027_OFT", phone: "82108*****", amount: "1,850" },
-    { username: "MEMBER_10028_OFT", phone: "71097*****", amount: "580" },
-    { username: "MEMBER_10029_OFT", phone: "60986*****", amount: "1,450" },
-    { username: "MEMBER_10030_OFT", phone: "59875*****", amount: "920" },
-    { username: "MEMBER_10031_OFT", phone: "48764*****", amount: "1,600" },
-    { username: "MEMBER_10032_OFT", phone: "37653*****", amount: "280" },
-    { username: "MEMBER_10033_OFT", phone: "26542*****", amount: "1,150" },
-    { username: "MEMBER_10034_OFT", phone: "15431*****", amount: "650" },
-    { username: "MEMBER_10035_OFT", phone: "94320*****", amount: "1,950" },
-    { username: "MEMBER_10036_OFT", phone: "83219*****", amount: "420" },
-    { username: "MEMBER_10037_OFT", phone: "72108*****", amount: "1,300" },
-    { username: "MEMBER_10038_OFT", phone: "61097*****", amount: "880" },
-    { username: "MEMBER_10039_OFT", phone: "50986*****", amount: "1,700" },
-    { username: "MEMBER_10040_OFT", phone: "49875*****", amount: "100" },
-  ];
-
-  const testimonialData = [
-    { name: "Rahul Sharma",  rating: 5, comment: "Best platform for quick earnings. Highly recommended!", gender: "M" },
-    { name: "Priya Patel",   rating: 4, comment: "Interface is very smooth and deposit process is instant.", gender: "F" },
-    { name: "Amit Gupta",    rating: 5, comment: "I received my withdrawal within 10 minutes. Trusted app!", gender: "M" },
-    { name: "Sneha Reddy",   rating: 5, comment: "Very secure and reliable. I love the user experience here.", gender: "F" },
-    { name: "Vikram Singh",  rating: 4, comment: "Great support team and clear instructions for everything.", gender: "M" },
-    { name: "Ananya Das",    rating: 5, comment: "Amazing platform! My earnings have doubled since I joined.", gender: "F" },
-    { name: "Rohan Mehta",   rating: 5, comment: "Super fast withdrawals and excellent customer support.", gender: "M" },
-    { name: "Divya Nair",    rating: 4, comment: "Love the transparency and security features of this app.", gender: "F" },
-  ];
-
-  const maskUsername = (username) => {
-    if (username.length <= 5) return username;
-    return username.slice(0, -5) + "*****";
-  };
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
