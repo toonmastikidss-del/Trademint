@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { BaggageClaimIcon, CirclePlus, Euro, HandCoins, X, Wallet, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -8,281 +8,375 @@ import mainIco from '../pictures/mainico.png';
 import { checkBalanceChange } from '../utils/balanceDetection';
 import { API_CONFIG } from '../config/apiConfig';
 
+// ─── Asset Preloading (runs before component mounts) ─────────────────────────
+// Preload image so it shows instantly without waiting
+const preloadedImg    = new Image();
+preloadedImg.src      = mainIco;
+
+// Preload video metadata so first frame is ready immediately
+const preloadLink     = document.createElement('link');
+preloadLink.rel       = 'preload';
+preloadLink.as        = 'video';
+preloadLink.href      = animationVideo;
+document.head.appendChild(preloadLink);
+
+// ─── Server Time Management ───────────────────────────────────────────────────
+// Strategy: fetch server time → calculate offset vs local clock → use offset
+// to derive accurate server time without extra API calls.
+// Offset is refreshed every 60s to handle device clock drift.
+// getServerNow() always returns server-corrected time — never device time.
+let serverTimeOffset = 0; // ms difference: serverClock - localClock
+
+const refreshServerOffset = async () => {
+  try {
+    const t0         = Date.now();
+    const res        = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/time`);
+    const t1         = Date.now();
+    const rtt        = t1 - t0;
+    // Compensate for network round-trip: server received request at t0 + rtt/2
+    serverTimeOffset = new Date(res.data.serverTime).getTime() - (t0 + rtt / 2);
+  } catch {
+    // Keep last known offset — do not fall back to device time
+  }
+};
+
+// Always returns server-corrected current time
+const getServerNow = () => new Date(Date.now() + serverTimeOffset);
+
+// ─── Skeleton shimmer ─────────────────────────────────────────────────────────
+const shimmerCSS = `
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+  .sk {
+    background: linear-gradient(90deg, #1e2535 25%, #2a3347 50%, #1e2535 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite linear;
+    border-radius: 8px;
+  }
+`;
+
+const Sk = ({ w = '100%', h = 16, r = 8, style = {} }) => (
+  <div className="sk" style={{ width: w, height: h, borderRadius: r, ...style }} />
+);
+
+const QuantifySkeleton = () => (
+  <>
+    <style>{shimmerCSS}</style>
+    <div className="flex flex-col h-full items-center justify-start w-full px-6 pt-10 pb-24 gap-4">
+
+      {/* Image placeholder */}
+      <div className="sk w-full rounded-2xl mb-4" style={{ height: 220 }} />
+
+      {/* Button placeholder */}
+      <div className="sk w-full rounded-2xl" style={{ height: 56 }} />
+
+      {/* Mode indicator placeholder */}
+      <div className="sk w-full rounded-xl" style={{ height: 48 }} />
+
+      {/* Section title */}
+      <div className="w-full">
+        <Sk w={160} h={14} r={6} />
+      </div>
+
+      {/* 4 Cards Grid */}
+      <div className="grid grid-cols-2 gap-4 px-1 py-2 w-full">
+        {[1, 2, 3, 4].map(i => (
+          <div
+            key={i}
+            className="bg-gradient-to-br from-[#212431] to-[#2a2d3e] h-32 rounded-2xl flex flex-col items-center justify-center gap-3 shadow-xl border border-white/5 px-4"
+          >
+            <Sk w="70%" h={28} r={6} />
+            <Sk w="80%" h={14} r={5} />
+          </div>
+        ))}
+      </div>
+
+      {/* Info section placeholder */}
+      <div className="w-full mt-4">
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col gap-4">
+          <div className="flex gap-4 items-start">
+            <Sk w={48} h={48} r={12} style={{ flexShrink: 0 }} />
+            <div className="flex flex-col gap-2 flex-1">
+              <Sk w="60%" h={18} r={6} />
+              <Sk w="100%" h={12} r={5} />
+              <Sk w="80%" h={12} r={5} />
+            </div>
+          </div>
+          <Sk w="100%" h={52} r={14} />
+        </div>
+      </div>
+
+      {/* History button placeholder */}
+      <div className="w-full mt-2">
+        <Sk w="100%" h={68} r={24} />
+      </div>
+    </div>
+  </>
+);
+
+// ─── Main Component ───────────────────────────────────────────────────────────
+
 const Quantify = () => {
   const navigate = useNavigate();
   const videoRef = useRef(null);
-  const [isQuantifying, setIsQuantifying] = useState(false);
-  const [balance, setBalance] = useState(0);
-  const [todayEarning, setTodayEarning] = useState(0);
-  const [totalRevenue, setTotalRevenue] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [showLowBalanceModal, setShowLowBalanceModal] = useState(false);
-  const [lowBalanceError, setLowBalanceError] = useState('');
+
+  const [isQuantifying,            setIsQuantifying]            = useState(false);
+  const [balance,                  setBalance]                  = useState(0);
+  const [todayEarning,             setTodayEarning]             = useState(0);
+  const [totalRevenue,             setTotalRevenue]             = useState(0);
+  const [loading,                  setLoading]                  = useState(true);
+  const [showLowBalanceModal,      setShowLowBalanceModal]      = useState(false);
+  const [lowBalanceError,          setLowBalanceError]          = useState('');
   const [elevenFiftyNineCountdown, setElevenFiftyNineCountdown] = useState(0);
-  const [alertModal, setAlertModal] = useState({ isOpen: false, message: '', type: '' });
-  const [serverTime, setServerTime] = useState(null);
-  const [mode, setMode] = useState('current'); // 'current' or 'continue'
-  const [lastBalance, setLastBalance] = useState(0); // Track balance changes
+  const [alertModal,               setAlertModal]               = useState({ isOpen: false, message: '', type: '' });
+  const [mode,                     setMode]                     = useState('current');
+  const [lastBalance,              setLastBalance]              = useState(0);
 
-  // Fetch server time
-  const fetchServerTime = async () => {
+  // ── Load user data ───────────────────────────────────────────────────────────
+  const loadUserData = useCallback(async () => {
     try {
-      const response = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/time`);
-      const serverTimeObj = new Date(response.data.serverTime);
-      setServerTime(serverTimeObj);
-    } catch (error) {
-      console.error('Error fetching server time:', error);
-      const clientTime = new Date();
-      setServerTime(clientTime);
-    }
-  };
+      const token = localStorage.getItem('token');
+      const user  = JSON.parse(localStorage.getItem('user'));
 
-  // Load user data on component mount and periodically
-  useEffect(() => {
-    const loadUserData = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const user = JSON.parse(localStorage.getItem('user'));
-        
-        if (!token || !user) {
-          console.error('User not authenticated');
-          return;
-        }
-        
-        await fetchServerTime();
-        
-        const response = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${user._id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        
-        const data = response.data;
+      if (!token || !user) {
+        console.error('User not authenticated');
+        return;
+      }
+
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}/api/quantify/user/${user._id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const data = response.data;
+
+      // Detect balance change (deposit / withdrawal happened)
+      if (lastBalance > 0 && data.balance !== lastBalance) {
         setBalance(data.balance || 0);
         setTotalRevenue(data.totalRevenue || 0);
         setTodayEarning(data.todayEarning || 0);
-        setIsQuantifying(data.isQuantifying || false);
-        setMode(data.mode || 'current');
-        
-        // Detect balance change (deposit/withdrawal happened)
-        if (lastBalance > 0 && data.balance !== lastBalance) {
-          console.log('💰 BALANCE CHANGED DETECTED!');
-          console.log('Old Balance:', lastBalance);
-          console.log('New Balance:', data.balance);
-          console.log('Difference:', data.balance - lastBalance);
-          console.log('Backend sent - Today Earning:', data.todayEarning, '| Total Revenue:', data.totalRevenue);
-          
-          // Use the values from backend (they already calculated it if quantifying was active)
-          setBalance(data.balance || 0);
-          setTotalRevenue(data.totalRevenue || 0);
-          setTodayEarning(data.todayEarning || 0);
-          
-          // Show notification
-          const earningChanged = data.todayEarning > 0;
-          setAlertModal({
-            isOpen: true,
-            message: `Balance updated! ${data.balance > lastBalance ? '+' : ''}${(data.balance - lastBalance).toFixed(2)} | ${earningChanged ? '✅ Earnings auto-calculated!' : 'Total Revenue updated'}`,
-            type: 'success'
-          });
-        } else {
-          // Normal update (no balance change)
-          setBalance(data.balance || 0);
-          setTotalRevenue(data.totalRevenue || 0);
-          setTodayEarning(data.todayEarning || 0);
-        }
-        
-        // Update last balance tracker
-        setLastBalance(data.balance || 0);
-        
-        // If quantifying is active, ensure video plays
-        if (data.isQuantifying && videoRef.current) {
-          videoRef.current.play();
-        }
-      } catch (error) {
-        console.error('Error loading user data:', error);
-      } finally {
-        setLoading(false);
+
+        const earningChanged = data.todayEarning > 0;
+        setAlertModal({
+          isOpen: true,
+          message: `Balance updated! ${data.balance > lastBalance ? '+' : ''}${(data.balance - lastBalance).toFixed(2)} | ${earningChanged ? '✅ Earnings auto-calculated!' : 'Total Revenue updated'}`,
+          type: 'success',
+        });
+      } else {
+        setBalance(data.balance || 0);
+        setTotalRevenue(data.totalRevenue || 0);
+        setTodayEarning(data.todayEarning || 0);
       }
-    };
-    
-    loadUserData();
-    
-    // Refresh data every 10 seconds (optimized from 5s to reduce server load)
-    // Balance changes will still show quickly enough without overloading server
-    const interval = setInterval(loadUserData, 10000);
-    return () => clearInterval(interval);
+
+      setIsQuantifying(data.isQuantifying || false);
+      setMode(data.mode || 'current');
+      setLastBalance(data.balance || 0);
+
+      if (data.isQuantifying && videoRef.current) {
+        videoRef.current.play().catch(() => {});
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, [lastBalance]);
+
+  // ── Mount: fetch server time offset + initial data load ──────────────────────
+  useEffect(() => {
+    // Fetch server time offset first, then load data
+    refreshServerOffset().then(() => loadUserData());
+
+    // Refresh server time offset every 60s silently
+    // Ensures getServerNow() stays accurate even when device clock drifts
+    // Cost: 1 tiny GET /time per 60s — no DB query on backend
+    const clockSync = setInterval(refreshServerOffset, 60_000);
+
+    return () => clearInterval(clockSync);
   }, []);
 
-  // Midnight countdown check (11:59 PM to 12:01 AM) - IMPROVED
+  // ── Polling: 30s interval, PAUSED when tab is hidden (Page Visibility API) ───
+  // Page Visibility API stops polling when user switches tabs — saves ~50% calls
+  useEffect(() => {
+    let interval = null;
+
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(loadUserData, 30_000);
+    };
+
+    const stopPolling = () => {
+      clearInterval(interval);
+      interval = null;
+    };
+
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        loadUserData(); // immediate refresh when user returns to tab
+        startPolling();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    startPolling();
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [loadUserData]);
+
+  // ── Midnight check — uses getServerNow() (server time, not device time) ──────
   useEffect(() => {
     const checkForMidnight = () => {
-      // Always use server time for consistency
-      const currentTime = serverTime || new Date();
-      const hours = currentTime.getHours();
-      const minutes = currentTime.getMinutes();
-      const seconds = currentTime.getSeconds();
-      
-      console.log('🕐 Checking midnight:', `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-      
-      // Check if it's between 11:59:00 PM (23:59:00) and 12:01:00 AM (00:01:00)
-      // More precise check with seconds
+      // getServerNow() uses server time offset — NOT device local time
+      const currentTime = getServerNow();
+      const hours       = currentTime.getHours();
+      const minutes     = currentTime.getMinutes();
+      const seconds     = currentTime.getSeconds();
+
       if ((hours === 23 && minutes === 59) || (hours === 0 && minutes <= 1)) {
-        console.log('⏰ MIDNIGHT DETECTED! Starting countdown...');
-        // Calculate remaining seconds in the 2-minute window
-        let remainingSeconds = 120; // Default 2 minutes
-        
+
+        let remainingSeconds = 120;
         if (hours === 23 && minutes === 59) {
-          // In 11:59 PM, count down from (60 - seconds) + 60 seconds for 12:00-12:01
           remainingSeconds = (60 - seconds) + 60;
         } else if (hours === 0 && minutes === 0) {
-          // In 12:00 AM, count down from (60 - seconds)
           remainingSeconds = 60 - seconds;
         } else if (hours === 0 && minutes === 1) {
-          // In 12:01 AM, just show few seconds
           remainingSeconds = 10;
         }
-        
+
         setElevenFiftyNineCountdown(remainingSeconds);
       }
     };
-    
-    // Check every 5 seconds for more responsive detection
-    const interval = setInterval(checkForMidnight, 5000);
-    checkForMidnight(); // Initial check
-    
-    return () => clearInterval(interval);
-  }, [serverTime]);
 
-  // Midnight countdown timer - IMPROVED
+    // Check every 10s — plenty for a 2-minute midnight window
+    const interval = setInterval(checkForMidnight, 10_000);
+    checkForMidnight();
+    return () => clearInterval(interval);
+  }, []); // No dependency on serverTime state — reads offset directly via getServerNow()
+
+  // ── Midnight countdown tick + reset ──────────────────────────────────────────
   useEffect(() => {
     let interval = null;
-    
+
     if (elevenFiftyNineCountdown > 0) {
-      console.log('⏳ Countdown running:', elevenFiftyNineCountdown, 'seconds remaining');
-      
+
       // Disable quantifying during midnight break
       setIsQuantifying(false);
-      
+
       interval = setInterval(() => {
         setElevenFiftyNineCountdown(prev => {
           if (prev <= 1) {
-            console.log('✅ Countdown finished!');
-            return 0; // Will trigger reset
+            return 0;
           }
           return prev - 1;
         });
       }, 1000);
+
     } else if (elevenFiftyNineCountdown === 0 && elevenFiftyNineCountdown !== -1) {
-      // Only run reset if countdown just finished (not on every page refresh)
-      // Set to -1 after running to prevent re-running on refresh
-      console.log('🔄 Performing midnight reset...');
-      
+
       const performMidnightReset = async () => {
         try {
           const token = localStorage.getItem('token');
-          const user = JSON.parse(localStorage.getItem('user'));
-          
+          const user  = JSON.parse(localStorage.getItem('user'));
+
           if (!token || !user) {
             console.warn('⚠️ User not authenticated, skipping reset');
-            setElevenFiftyNineCountdown(-1); // Mark as complete
-            return;
-          }
-          
-          // Check current server time - only reset if actually in midnight window
-          const currentTime = serverTime || new Date();
-          const hours = currentTime.getHours();
-          const minutes = currentTime.getMinutes();
-          const isActuallyMidnight = (hours === 23 && minutes === 59) || 
-                                     (hours === 0 && minutes <= 1);
-          
-          if (!isActuallyMidnight) {
-            // Not actually midnight - don't reset, just mark countdown as done
-            console.log('ℹ️ Not midnight time, skipping reset');
             setElevenFiftyNineCountdown(-1);
             return;
           }
-          
-          console.log('✨ Calling backend midnight reset API...');
-          
-          // Call backend midnight reset
-          await axios.post(`${API_CONFIG.BASE_URL}/api/quantify/midnight-reset`, {}, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
-          console.log('✅ Backend reset successful!');
-          
-          // Reload data after reset
-          const response = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${user._id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          
+
+          // Use server time (via offset) — not device time
+          const currentTime       = getServerNow();
+          const hours             = currentTime.getHours();
+          const minutes           = currentTime.getMinutes();
+          const isActuallyMidnight = (hours === 23 && minutes === 59) || (hours === 0 && minutes <= 1);
+
+          if (!isActuallyMidnight) {
+            setElevenFiftyNineCountdown(-1);
+            return;
+          }
+
+          await axios.post(
+            `${API_CONFIG.BASE_URL}/api/quantify/midnight-reset`,
+            {},
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          const response = await axios.get(
+            `${API_CONFIG.BASE_URL}/api/quantify/user/${user._id}`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
           const data = response.data;
           setBalance(data.balance || 0);
           setTotalRevenue(data.totalRevenue || 0);
-          setTodayEarning(0); // Reset today's earning
+          setTodayEarning(0);
           setIsQuantifying(false);
-          setMode(data.mode || 'continue'); // Switch to continue mode
-          
-          console.log('📊 New day data loaded:', data);
-          
-          // Show success message
-          setAlertModal({ 
-            isOpen: true, 
-            message: 'New day started! Click "Start Quantifying" to continue.', 
-            type: 'success' 
+          setMode(data.mode || 'continue');
+
+          setAlertModal({
+            isOpen: true,
+            message: 'New day started! Click "Start Quantifying" to continue.',
+            type: 'success',
           });
-          
-          // Mark as complete
+
           setElevenFiftyNineCountdown(-1);
         } catch (error) {
           console.error('❌ Error in midnight reset:', error);
           setElevenFiftyNineCountdown(-1);
         }
       };
-      
+
       performMidnightReset();
     }
-    
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [elevenFiftyNineCountdown, serverTime]);
 
+    return () => { if (interval) clearInterval(interval); };
+  }, [elevenFiftyNineCountdown]);
+
+  // ── Start quantifying ─────────────────────────────────────────────────────────
   const handleStartQuantifying = async () => {
     if (isQuantifying || elevenFiftyNineCountdown > 0) return;
-    
+
     try {
       const token = localStorage.getItem('token');
-      const user = JSON.parse(localStorage.getItem('user'));
-      
+      const user  = JSON.parse(localStorage.getItem('user'));
+
       if (!token || !user) {
         setAlertModal({ isOpen: true, message: 'Please login first', type: 'error' });
         return;
       }
-      
+
       setLoading(true);
-      
-      const response = await axios.post(`${API_CONFIG.BASE_URL}/api/quantify/start`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
+
+      const response = await axios.post(
+        `${API_CONFIG.BASE_URL}/api/quantify/start`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
       const data = response.data;
       setBalance(data.balance || 0);
       setTotalRevenue(data.totalRevenue || 0);
       setTodayEarning(data.todayEarning || 0);
       setIsQuantifying(true);
       setMode(data.mode || 'current');
-      
-      // Play animation video
+
       if (videoRef.current) {
-        videoRef.current.play();
+        videoRef.current.play().catch(() => {});
       }
-      
-      // Show success message
-      setAlertModal({ 
-        isOpen: true, 
-        message: `${data.mode === 'current' ? 'Current' : 'Continue'} mode activated! Earning started.`, 
-        type: 'success' 
+
+      setAlertModal({
+        isOpen: true,
+        message: `${data.mode === 'current' ? 'Current' : 'Continue'} mode activated! Earning started.`,
+        type: 'success',
       });
-      
+
     } catch (error) {
       if (error.response?.data?.error) {
         if (error.response.data.error.includes('recharge')) {
@@ -300,28 +394,25 @@ const Quantify = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex flex-col h-full items-center justify-center w-full px-6 pt-10 pb-24">
-        <div className="w-12 h-12 border-4 border-[#49bace]/30 border-t-[#49bace] rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-400 font-medium">Loading...</p>
-      </div>
-    );
-  }
+  // ── Skeleton loader (replaces spinner) ───────────────────────────────────────
+  if (loading) return <QuantifySkeleton />;
+
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
       <div className="flex flex-col h-full items-center justify-start w-full px-6 pt-10 pb-24">
+
         {/* Midnight Countdown Overlay with Glassmorphism */}
         {elevenFiftyNineCountdown > 0 && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
             {/* Glassmorphism Background */}
             <div className="absolute inset-0 bg-black/40 backdrop-blur-xl"></div>
-            
+
             {/* Animated Gradient Border */}
             <div className="relative w-72 h-72 rounded-full bg-gradient-to-br from-cyan-500/30 via-purple-500/30 to-pink-500/30 flex items-center justify-center border-2 border-white/20 animate-pulse">
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-cyan-400/20 to-purple-400/20 animate-spin"></div>
-              
+
               {/* Countdown Display */}
               <div className="text-center z-10">
                 <div className="text-7xl font-black text-white mb-3 drop-shadow-lg">
@@ -333,7 +424,7 @@ const Quantify = () => {
             </div>
           </div>
         )}
-        
+
         {/* Video or Image Display */}
         {isQuantifying ? (
           <video
@@ -344,12 +435,15 @@ const Quantify = () => {
             loop
             muted
             playsInline
+            preload="auto"
           />
         ) : (
           <img
             src={mainIco}
             alt="Quantify Icon"
             className="mb-4 w-[100%] rounded-2xl shadow-2xl"
+            loading="eager"
+            decoding="async"
           />
         )}
 
@@ -359,7 +453,7 @@ const Quantify = () => {
           disabled={isQuantifying || loading || elevenFiftyNineCountdown > 0}
           className={`px-6 py-4 w-full text-white rounded-2xl shadow-lg mb-6 transition-all duration-300 transform ${
             isQuantifying || elevenFiftyNineCountdown > 0
-              ? 'bg-gray-700 opacity-60 cursor-not-allowed scale-100' 
+              ? 'bg-gray-700 opacity-60 cursor-not-allowed scale-100'
               : 'bg-gradient-to-r from-[#52556b] to-[#62657b] hover:from-[#62657b] hover:to-[#72758b] hover:scale-[1.02] active:scale-[0.98]'
           }`}
         >
@@ -384,8 +478,8 @@ const Quantify = () => {
             <div className="flex items-center justify-between">
               <span className="text-cyan-400 font-semibold text-sm">Current Mode:</span>
               <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                mode === 'current' 
-                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30' 
+                mode === 'current'
+                  ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
                   : 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
               }`}>
                 {mode === 'current' ? '📊 Current (Balance Based)' : '🔄 Continue (Revenue Based)'}
@@ -403,6 +497,7 @@ const Quantify = () => {
 
         {/* 4 Cards Grid */}
         <div className="grid grid-cols-2 gap-4 px-1 py-2 w-full">
+
           {/* Total Revenue Card */}
           <div className="bg-gradient-to-br from-[#212431] to-[#2a2d3e] h-32 rounded-2xl text-center flex flex-col items-center justify-center shadow-xl border border-white/5 hover:border-cyan-500/20 transition-all duration-300">
             <span className="text-[#42bece] text-3xl font-bold">{totalRevenue.toFixed(2)}</span>
@@ -420,7 +515,7 @@ const Quantify = () => {
               <span className="text-sm font-medium">Trading Profit</span>
             </div>
           </div>
-          
+
           {/* Balance Card */}
           <div className="bg-gradient-to-br from-[#212431] to-[#2a2d3e] h-32 rounded-2xl text-center flex flex-col items-center justify-center shadow-xl border border-white/5 hover:border-blue-500/20 transition-all duration-300">
             <span className="text-[#42bece] text-3xl font-bold">{balance.toFixed(2)}</span>
@@ -429,7 +524,7 @@ const Quantify = () => {
               <span className="text-sm font-medium">Balance</span>
             </div>
           </div>
-          
+
           {/* Today's Earning Card */}
           <div className="bg-gradient-to-br from-[#212431] to-[#2a2d3e] h-32 rounded-2xl text-center flex flex-col items-center justify-center shadow-xl border border-white/5 hover:border-yellow-500/20 transition-all duration-300">
             <span className="text-[#42bece] text-3xl font-bold">{todayEarning.toFixed(2)}</span>
@@ -438,6 +533,7 @@ const Quantify = () => {
               <span className="text-sm font-medium">Today's Earning</span>
             </div>
           </div>
+
         </div>
 
         {/* Info Section */}
@@ -454,8 +550,8 @@ const Quantify = () => {
                 </p>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => window.open('https://www.youtube.com/watch?v=example', '_blank')}
               className="w-full group relative py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-black rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40"
             >
@@ -474,7 +570,7 @@ const Quantify = () => {
 
         {/* History Button */}
         <div className="w-full mt-6">
-          <button 
+          <button
             onClick={() => navigate('/quantify/history')}
             className="w-full group relative py-5 bg-gradient-to-r from-purple-600 via-purple-700 to-pink-600 text-white font-black rounded-3xl overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.97] shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 border border-white/10"
           >
@@ -490,6 +586,7 @@ const Quantify = () => {
             </div>
           </button>
         </div>
+
       </div>
 
       {/* Low Balance Modal */}
@@ -499,7 +596,7 @@ const Quantify = () => {
             <div className="p-6 border-b border-gray-800/20">
               <div className="flex justify-between items-center">
                 <h3 className="text-lg font-bold text-white">Insufficient Balance</h3>
-                <button 
+                <button
                   onClick={() => setShowLowBalanceModal(false)}
                   className="p-1 text-gray-400 hover:text-white hover:bg-gray-500/10 rounded-lg"
                 >
@@ -507,7 +604,7 @@ const Quantify = () => {
                 </button>
               </div>
             </div>
-            
+
             <div className="p-6">
               <div className="text-center mb-6">
                 <div className="w-16 h-16 bg-rose-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -515,9 +612,9 @@ const Quantify = () => {
                 </div>
                 <p className="text-gray-300 font-medium">{lowBalanceError}</p>
               </div>
-              
+
               <div className="flex flex-col gap-3">
-                <button 
+                <button
                   onClick={() => {
                     setShowLowBalanceModal(false);
                     window.location.href = '/deposite';
@@ -526,8 +623,8 @@ const Quantify = () => {
                 >
                   Go to Deposit
                 </button>
-                
-                <button 
+
+                <button
                   onClick={() => setShowLowBalanceModal(false)}
                   className="w-full py-4 bg-gray-700 text-white font-black uppercase tracking-widest text-sm rounded-2xl hover:bg-gray-600 transition-all"
                 >
@@ -566,7 +663,7 @@ const Quantify = () => {
                 }`}>
                   {alertModal.type === 'success' ? <CheckCircle2 size={40} /> : <AlertCircle size={40} />}
                 </div>
-                
+
                 <div className="space-y-2">
                   <h3 className={`text-xl font-bold ${
                     alertModal.type === 'success' ? 'text-green-500' : 'text-red-500'
@@ -581,9 +678,9 @@ const Quantify = () => {
                 <button
                   onClick={() => setAlertModal({ ...alertModal, isOpen: false })}
                   className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${
-                    alertModal.type === 'success' 
-                    ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20' 
-                    : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/20'
+                    alertModal.type === 'success'
+                      ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
+                      : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/20'
                   }`}
                 >
                   Close
