@@ -1,8 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_CONFIG } from '../config/apiConfig';
+
+// ─── Frontend Cache ───────────────────────────────────────────────────────────
+// FIX 1: 60s cache — user navigates away and comes back → 0 extra API calls → no 429
+const CACHE_TTL_MS = 60_000;
+let _cachedData  = null;
+let _cacheExpiry = 0;
+
+const isCacheValid = ()     => _cachedData !== null && Date.now() < _cacheExpiry;
+const writeCache   = (data) => { _cachedData = data; _cacheExpiry = Date.now() + CACHE_TTL_MS; };
+const clearCache   = ()     => { _cachedData = null; _cacheExpiry = 0; };
 
 // ─── Skeleton shimmer components ─────────────────────────────────────────────
 const shimmerStyle = `
@@ -36,7 +46,6 @@ const SkeletonCard = () => (
             key={i}
             className={`${i !== 0 ? 'border-t border-gray-700/50 mt-4 pt-4' : ''}`}
           >
-            {/* Row 1: type label + badge + amount */}
             <div className="flex justify-between items-center mb-2">
               <div className="flex items-center space-x-2">
                 <Skeleton w={80} h={16} r={6} />
@@ -44,9 +53,7 @@ const SkeletonCard = () => (
               </div>
               <Skeleton w={70} h={18} r={6} />
             </div>
-            {/* Row 2: date */}
             <Skeleton w={160} h={11} r={5} />
-            {/* Row 3: sub info (alternate rows) */}
             {i % 2 === 0 && (
               <div className="mt-2">
                 <Skeleton w={200} h={10} r={5} />
@@ -66,12 +73,24 @@ const SkeletonCard = () => (
 const Record = () => {
   const [selected, setSelected] = useState('All');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState([]);
+  const [cacheUsed, setCacheUsed] = useState(false);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   // Fetch real transaction data
-  const fetchTransactionData = useCallback(async () => {
+  const fetchTransactionData = useCallback(async (forceRefresh = false) => {
+
+    // FIX 1: Serve from cache if valid and not a forced refresh
+    if (!forceRefresh && isCacheValid()) {
+      setTransactions(_cachedData);
+      setCacheUsed(true);
+      setLoading(false);
+      return;
+    }
+
+    setCacheUsed(false);
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -90,85 +109,75 @@ const Record = () => {
       
       if (!token || !savedUser) {
         // console.error('User not authenticated');
-        setTransactions([]); // Ensure transactions is an empty array
+        setTransactions([]);
         return;
       }
       
       setUser(savedUser);
-      
-      // Fetch withdrawal requests with safety check
-      let withdrawalData = [];
-      try {
-        const withdrawalRes = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal/user/${savedUser._id}`, {
+
+      // FIX 2: All 6 requests fire in PARALLEL using Promise.allSettled
+      // — one failure won't block others (unlike sequential try/catch)
+      // — reduces server load and speeds up page load significantly
+      const [
+        withdrawalResult,
+        depositResult,
+        rewardResult,
+        referralResult,
+        tradeHistoryResult,
+        quantifyResult,
+      ] = await Promise.allSettled([
+        axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal/user/${savedUser._id}`, {
           headers: { Authorization: `Bearer ${token}` }
-        });
-        withdrawalData = Array.isArray(withdrawalRes.data) ? withdrawalRes.data : [];
-      } catch (error) {
-        // console.error('Error fetching withdrawals:', error);
-        withdrawalData = [];
-      }
-      
-      // Fetch deposit records with safety check
-      let depositData = [];
-      try {
-        const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
+        }),
+        axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
           headers: { Authorization: `Bearer ${token}` }
-        });
-        depositData = Array.isArray(depositRes.data) ? depositRes.data : [];
-      } catch (error) {
-        // console.error('Error fetching deposits:', error);
-        depositData = [];
-      }
-      
-      // Fetch reward history (user tasks with rewards)
-      let rewardHistory = [];
-      try {
-        const rewardRes = await axios.get(`${API_CONFIG.BASE_URL}/api/task/rewards/${savedUser._id}`, {
+        }),
+        axios.get(`${API_CONFIG.BASE_URL}/api/task/rewards/${savedUser._id}`, {
           headers: { Authorization: `Bearer ${token}` }
-        });
-        rewardHistory = rewardRes.data.rewards || [];
-        // console.log('Fetched task reward history records:', rewardHistory.length);
-      } catch (err) {
-        // console.log('Task reward history not available');
-      }
-      
-      // Fetch referral reward history
-      let referralRewards = [];
-      try {
-        const referralStatsRes = await axios.get(`${API_CONFIG.BASE_URL}/api/referral/stats`, {
+        }),
+        axios.get(`${API_CONFIG.BASE_URL}/api/referral/stats`, {
           headers: { Authorization: `Bearer ${token}` }
-        });
-        const referrals = referralStatsRes.data.referrals || [];
-        
-        // Convert referrals to reward format
-        referralRewards = referrals
-          .filter(ref => ref.rewardGiven && (ref.status === 'completed' || ref.status === 'rewarded'))
-          .map(ref => ({
-            amount: ref.rewardAmount,
-            completedAt: new Date(ref.createdAt),
-            refereeName: ref.refereeId?.name || 'Friend',
-            refereePhone: ref.refereeId?.phone || 'N/A'
-          }));
-        
-        // console.log('Fetched referral reward records:', referralRewards.length);
-      } catch (err) {
-        // console.log('Referral rewards not available');
-      }
+        }),
+        axios.get(`${API_CONFIG.BASE_URL}/api/quantify/history?page=1&limit=100`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+        axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        }),
+      ]);
+
+      // Safely extract each result
+      const withdrawalData = withdrawalResult.status === 'fulfilled' && Array.isArray(withdrawalResult.value.data)
+        ? withdrawalResult.value.data : [];
+
+      const depositData = depositResult.status === 'fulfilled' && Array.isArray(depositResult.value.data)
+        ? depositResult.value.data : [];
+
+      const rewardHistory = rewardResult.status === 'fulfilled'
+        ? (rewardResult.value.data.rewards || []) : [];
+
+      const referralRaw = referralResult.status === 'fulfilled'
+        ? (referralResult.value.data.referrals || []) : [];
+
+      const tradeHistory = tradeHistoryResult.status === 'fulfilled'
+        ? (tradeHistoryResult.value.data.history || []) : [];
+
+      const quantifyApiData = quantifyResult.status === 'fulfilled'
+        ? quantifyResult.value.data : null;
+
+      // Convert referrals to reward format
+      const referralRewards = referralRaw
+        .filter(ref => ref.rewardGiven && (ref.status === 'completed' || ref.status === 'rewarded'))
+        .map(ref => ({
+          amount: ref.rewardAmount,
+          completedAt: new Date(ref.createdAt),
+          refereeName: ref.refereeId?.name || 'Friend',
+          refereePhone: ref.refereeId?.phone || 'N/A'
+        }));
       
-      // ─── FIX: /history/daily route does not exist in backend ─────────────────
-      // Correct route is /api/quantify/history (works for current user)
-      // /history/daily was giving 404 error
-      let tradeHistory = [];
-      try {
-        const historyRes = await axios.get(
-          `${API_CONFIG.BASE_URL}/api/quantify/history?page=1&limit=100`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        tradeHistory = historyRes.data.history || [];
-        // console.log('Fetched trade history records:', tradeHistory.length);
-      } catch (err) {
-        // console.log('Quantify history not available');
-      }
+      // console.log('Fetched task reward history records:', rewardHistory.length);
+      // console.log('Fetched referral reward records:', referralRewards.length);
+      // console.log('Fetched trade history records:', tradeHistory.length);
       
       // Process and combine all transaction data
       const allTransactions = [];
@@ -213,11 +222,15 @@ const Record = () => {
       });
       
       // Add historical trade records from quantify history
+      // FIX 3: QuantifyHistory model saves field as "earning" not "todayEarning"
+      // Old code: record.todayEarning > 0 → always undefined → Trade tab was empty
+      // Fixed: record.earning with fallback → all days now show correctly
       tradeHistory.forEach(record => {
-        if (record.todayEarning > 0) {
+        const earnAmt = record.earning ?? record.todayEarning ?? 0;
+        if (earnAmt > 0) {
           allTransactions.push({
             type: 'Trade',
-            amount: `+${record.todayEarning.toFixed(2)}`,
+            amount: `+${earnAmt.toFixed(2)}`,
             date: new Date(record.date).toLocaleString('en-US', {
               year: 'numeric',
               month: 'short',
@@ -272,47 +285,40 @@ const Record = () => {
       });
       
       // Also add today's earning if quantifying is currently active
-      let todayEarning = 0;
-      try {
-        const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-        todayEarning = quantifyRes.data.todayEarning || 0;
-        const isQuantifying = quantifyRes.data.isQuantifying || false;
+      const todayEarning  = quantifyApiData?.todayEarning || 0;
+      const isQuantifying = quantifyApiData?.isQuantifying || false;
+
+      if (isQuantifying && todayEarning > 0) {
+        const today = new Date().toDateString();
+        const hasTodayRecord = tradeHistory.some(record =>
+          new Date(record.date).toDateString() === today
+        );
         
-        // Add today's earning if quantifying is active and not already in history
-        if (isQuantifying && todayEarning > 0) {
-          const today = new Date().toDateString();
-          const hasTodayRecord = tradeHistory.some(record => 
-            new Date(record.date).toDateString() === today
-          );
-          
-          // Only add if today's record doesn't already exist in history
-          if (!hasTodayRecord) {
-            allTransactions.push({
-              type: 'Trade',
-              amount: `+${todayEarning.toFixed(2)}`,
-              date: new Date().toLocaleString('en-US', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit'
-              }),
-              status: 'completed',
-              source: 'quantify',
-              description: "Today's Active Quantify Earning"
-            });
-          }
+        // Only add if today's record doesn't already exist in history
+        if (!hasTodayRecord) {
+          allTransactions.push({
+            type: 'Trade',
+            amount: `+${todayEarning.toFixed(2)}`,
+            date: new Date().toLocaleString('en-US', {
+              year: 'numeric',
+              month: 'short',
+              day: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit'
+            }),
+            status: 'completed',
+            source: 'quantify',
+            description: "Today's Active Quantify Earning"
+          });
         }
-      } catch (err) {
-        // console.log('Current quantify data not available');
       }
       
       // Sort by date (newest first)
       allTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-      
+
+      // Save to cache
+      writeCache(allTransactions);
       setTransactions(allTransactions);
       
     } catch (error) {
@@ -321,6 +327,7 @@ const Record = () => {
       setTransactions(getDemoData());
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
 
@@ -332,6 +339,13 @@ const Record = () => {
       { type: 'Withdraw', amount: '-900.40', date: 'Nov 07 2024 08:27:20 am', status: 'approved', source: 'withdrawal' },
       { type: 'Trade', amount: '+50.25', date: 'Nov 05 2024 11:45:10 am', status: 'completed', source: 'quantify' },
     ];
+  };
+
+  // Manual refresh — clears cache and fetches fresh data
+  const handleRefresh = () => {
+    clearCache();
+    setRefreshing(true);
+    fetchTransactionData(true);
   };
 
   const handleSelect = (option) => {
@@ -363,10 +377,17 @@ const Record = () => {
         <div className='absolute top-4 left-5 cursor-pointer text-white' onClick={() => { navigate(-1) }}>
           <ChevronLeft className='opacity-65' />
         </div>
+        {/* Refresh button top-right */}
+        <div
+          className='absolute top-4 right-5 cursor-pointer text-white opacity-65 hover:opacity-100 transition-opacity'
+          onClick={handleRefresh}
+        >
+          <RefreshCw size={18} className={refreshing ? 'animate-spin text-[#49bace]' : ''} />
+        </div>
       </div>
 
       <div className='w-full px-4'>
-        <div className='flex flex-row justify-between mt-6 mb-8 overflow-x-auto no-scrollbar gap-1'>
+        <div className='flex flex-row justify-between mt-6 mb-4 overflow-x-auto no-scrollbar gap-1'>
           {['All', 'Trade', 'Reward', 'Withdraw', 'Recharge'].map((tab) => (
             <div
               key={tab}
@@ -381,6 +402,16 @@ const Record = () => {
             </div>
           ))}
         </div>
+
+        {/* Cache hint */}
+        {cacheUsed && !loading && (
+          <div className="flex items-center justify-between mb-4 px-1">
+            <span className="text-[10px] text-gray-600">Showing cached data</span>
+            <button onClick={handleRefresh} className="text-[10px] text-[#49bace] font-semibold">
+              Refresh ↻
+            </button>
+          </div>
+        )}
 
         {/* ── SKELETON replaces spinner ── */}
         {loading ? (
