@@ -1,18 +1,78 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { LoaderCircle, ChevronLeft } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { API_CONFIG } from '../config/apiConfig';
 
+// ─── Skeleton shimmer components ─────────────────────────────────────────────
+const shimmerStyle = `
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+`;
+
+const Skeleton = ({ w = '100%', h = 14, r = 8, className = '' }) => (
+  <div
+    className={className}
+    style={{
+      width: w,
+      height: h,
+      borderRadius: r,
+      background: 'linear-gradient(90deg, #1e2535 25%, #2a3347 50%, #1e2535 75%)',
+      backgroundSize: '200% 100%',
+      animation: 'shimmer 1.4s infinite linear',
+    }}
+  />
+);
+
+const SkeletonCard = () => (
+  <>
+    <style>{shimmerStyle}</style>
+    <div className="space-y-4">
+      <div className="bg-[#212431] rounded-3xl p-5 border border-gray-800 shadow-2xl">
+        {[1, 2, 3, 4].map((_, i) => (
+          <div
+            key={i}
+            className={`${i !== 0 ? 'border-t border-gray-700/50 mt-4 pt-4' : ''}`}
+          >
+            {/* Row 1: type label + badge + amount */}
+            <div className="flex justify-between items-center mb-2">
+              <div className="flex items-center space-x-2">
+                <Skeleton w={80} h={16} r={6} />
+                <Skeleton w={44} h={16} r={20} />
+              </div>
+              <Skeleton w={70} h={18} r={6} />
+            </div>
+            {/* Row 2: date */}
+            <Skeleton w={160} h={11} r={5} />
+            {/* Row 3: sub info (alternate rows) */}
+            {i % 2 === 0 && (
+              <div className="mt-2">
+                <Skeleton w={200} h={10} r={5} />
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="text-center text-gray-600 text-sm py-8">
+        Loading transactions...
+      </div>
+    </div>
+  </>
+);
+// ─────────────────────────────────────────────────────────────────────────────
+
 const Record = () => {
   const [selected, setSelected] = useState('All');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState([]);
   const [user, setUser] = useState(null);
   const navigate = useNavigate();
 
   // Fetch real transaction data
   const fetchTransactionData = useCallback(async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const savedUserStr = localStorage.getItem('user');
@@ -257,6 +317,8 @@ const Record = () => {
       // console.error('Error fetching transaction data:', error);
       // Fallback to demo data on error
       setTransactions(getDemoData());
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -271,11 +333,7 @@ const Record = () => {
   };
 
   const handleSelect = (option) => {
-    setLoading(true);
     setSelected(option);
-    setTimeout(() => {
-      setLoading(false);
-    }, 300);
   };
 
   // Filter transactions based on selected tab
@@ -322,10 +380,9 @@ const Record = () => {
           ))}
         </div>
 
+        {/* ── SKELETON replaces spinner ── */}
         {loading ? (
-          <div className="flex justify-center items-center py-10">
-            <LoaderCircle className="animate-spin text-[#49bace]" size={32} />
-          </div>
+          <SkeletonCard />
         ) : (
           <div className="space-y-4">
             <div className="bg-[#212431] rounded-3xl p-5 border border-gray-800 shadow-2xl">
