@@ -1,288 +1,325 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Download, Smartphone, CheckCircle, AlertCircle, Share, Plus, MoreVertical } from 'lucide-react';
+import {
+  ChevronLeft, Download, Smartphone, CheckCircle,
+  AlertCircle, Share, Plus, Zap, Bell, Shield, Wifi, Home
+} from 'lucide-react';
 
+const BENEFITS = [
+  { icon: Zap, title: 'Lightning Fast', desc: 'Optimised for mobile — zero lag trading' },
+  { icon: Wifi, title: 'Offline Access', desc: 'Key features work without internet' },
+  { icon: Bell, title: 'Instant Notifications', desc: 'Price alerts delivered in real-time' },
+  { icon: Home, title: 'One-Tap Access', desc: 'Launch directly from your home screen' },
+  { icon: Shield, title: 'Bank-Level Security', desc: 'Biometric auth & end-to-end encryption' },
+];
+
+const IOS_STEPS = [
+  { icon: Share, label: 'Safari mein Share button tap karo (bottom toolbar)' },
+  { icon: Plus, label: '"Add to Home Screen" select karo' },
+  { icon: CheckCircle, label: 'Top-right mein "Add" tap karo — done!' },
+];
+
+const detectDevice = () => {
+  const ua = navigator.userAgent.toLowerCase();
+  if (/android/.test(ua)) return 'android';
+  if (/iphone|ipad|ipod/.test(ua)) return 'ios';
+  return 'desktop';
+};
+
+/* ═══════════════════════════════════════════════════════════════════════ */
 const AppDownload = () => {
   const navigate = useNavigate();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [showInstallGuide, setShowInstallGuide] = useState(false);
-  const [deviceType, setDeviceType] = useState('unknown');
+  const [showIOSGuide, setShowIOSGuide] = useState(false);
+  const [installed, setInstalled] = useState(false);
+  const device = detectDevice();
 
   useEffect(() => {
-    // Detect device type
-    const userAgent = navigator.userAgent.toLowerCase();
-    if (/android/.test(userAgent)) {
-      setDeviceType('android');
-    } else if (/iphone|ipad|ipod/.test(userAgent)) {
-      setDeviceType('ios');
-    } else {
-      setDeviceType('desktop');
-    }
-
-    // Check if already installed
+    // Already running as installed PWA?
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
     }
 
-    // Listen for PWA install prompt
-    const handleBeforeInstallPrompt = (e) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
+    // Chrome / Edge / Android Chrome fires this event when app is installable
+    const handler = (e) => {
+      e.preventDefault();     // stop Chrome's mini bar
+      setDeferredPrompt(e);   // save it so we can fire it on button click
     };
-
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  const handleInstallClick = async () => {
-    if (!deferredPrompt) {
-      setShowInstallGuide(true);
+  /* ── Main install handler ─────────────────────────────────────────── */
+  const handleInstall = async () => {
+    if (device === 'ios') {
+      // iOS Safari doesn't support beforeinstallprompt — show manual guide
+      setShowIOSGuide(true);
       return;
     }
 
-    try {
-      await deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      
-      if (outcome === 'accepted') {
-        setIsInstalled(true);
-        setDeferredPrompt(null);
-      }
-    } catch (error) {
-      console.error('Install error:', error);
-      setShowInstallGuide(true);
+    if (!deferredPrompt) {
+      // Chrome prompt not available yet (maybe already installed or HTTPS missing)
+      setShowIOSGuide(true);
+      return;
+    }
+
+    // 🔥 This triggers the native Chrome "Install App" dialog
+    deferredPrompt.prompt();
+
+    const { outcome } = await deferredPrompt.userChoice;
+    setDeferredPrompt(null);
+
+    if (outcome === 'accepted') {
+      setInstalled(true);
+      setIsInstalled(true);
     }
   };
 
-  const getInstallInstructions = () => {
-    if (deviceType === 'ios') {
-      return {
-        title: 'Install on iPhone/iPad',
-        steps: [
-          'Tap the Share button below',
-          'Scroll down and tap "Add to Home Screen"',
-          'Tap "Add" in the top right corner',
-          'App will be installed on your home screen'
-        ],
-        icon: '🍎'
-      };
-    } else if (deviceType === 'android') {
-      return {
-        title: 'Install on Android',
-        steps: [
-          'Tap the three-dot menu (⋮) in your browser',
-          'Select "Install app" or "Add to Home screen"',
-          'Confirm by tapping "Install"',
-          'App icon will appear on your home screen'
-        ],
-        icon: '🤖'
-      };
-    } else {
-      return {
-        title: 'Install on Desktop',
-        steps: [
-          'Click the install button in the address bar',
-          'Or click the three-dot menu',
-          'Select "Install TradeMint"',
-          'App will open in a new window'
-        ],
-        icon: '💻'
-      };
-    }
+  /* ── CTA label ────────────────────────────────────────────────────── */
+  const ctaLabel = () => {
+    if (installed) return 'Installed Successfully ✓';
+    if (device === 'ios') return 'Add to Home Screen';
+    if (deferredPrompt) return 'Install App';
+    return 'Add to Home Screen';
   };
 
-  const instructions = getInstallInstructions();
-
+  /* ═══════════════════════════ RENDER ════════════════════════════════ */
   return (
-    <div className="bg-[#101821] min-h-screen text-white font-sans pb-10">
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-[#312c42] px-4 py-4 flex items-center shadow-lg">
-        <button onClick={() => navigate('/')} className="p-1">
-          <ChevronLeft size={24} className="text-gray-300" />
+    <div style={s.root}>
+
+      {/* Top Bar */}
+      <div style={s.topBar}>
+        <button onClick={() => navigate('/')} style={s.iconBtn}>
+          <ChevronLeft size={22} color="#cbd5e1" />
         </button>
-        <h1 className="text-lg font-bold ml-4">Download App</h1>
+        <span style={s.topBarTitle}>Download App</span>
+        <div style={{ width: 36 }} />
       </div>
 
-      <div className="p-4 space-y-6">
-        {/* Hero Section */}
-        <div className="text-center space-y-4 mt-8">
-          <div className="w-32 h-32 bg-gradient-to-br from-[#49bace] to-[#3da9bd] rounded-[2rem] flex items-center justify-center mx-auto shadow-2xl border-4 border-gray-800">
-            <Smartphone size={64} className="text-white" />
+      <div style={s.content}>
+
+        {/* Hero */}
+        <div style={s.hero}>
+          <div style={s.logoWrap}>
+            <div style={s.logoPulse} />
+            <div style={s.logoBox}>
+              <Smartphone size={52} color="#fff" />
+            </div>
           </div>
-          <h2 className="text-3xl font-black tracking-tight uppercase">TradeMint App</h2>
-          <p className="text-sm text-gray-400 leading-relaxed max-w-xs mx-auto">
-            Install our app for the best experience - Fast, Secure & Always Available
-          </p>
+          <h1 style={s.heroTitle}>TradeMint</h1>
+          <p style={s.heroSub}>Trade smarter, faster &amp; safer — right from your phone.</p>
+          <div style={s.pillRow}>
+            <span style={s.pill}>v1.0.0</span>
+            <span style={s.pill}>PWA</span>
+            <span style={{ ...s.pill, ...s.pillGreen }}>Free</span>
+          </div>
         </div>
 
-        {/* Install Status */}
+        {/* Already Installed Banner */}
         {isInstalled && (
-          <div className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30 rounded-2xl p-4 flex items-center space-x-3">
-            <CheckCircle size={24} className="text-emerald-500 flex-shrink-0" />
+          <div style={s.installedBanner}>
+            <CheckCircle size={22} color="#34d399" />
             <div>
-              <p className="text-sm font-bold text-white">App is Installed!</p>
-              <p className="text-xs text-gray-400">You're ready to trade on the go</p>
+              <p style={s.installedTitle}>App is Installed!</p>
+              <p style={s.installedSub}>You're all set — happy trading 🚀</p>
             </div>
           </div>
         )}
 
-        {/* Main Install Button */}
+        {/* Install Card */}
         {!isInstalled && (
-          <div className="bg-[#212431] border border-gray-700 rounded-[2rem] p-6 shadow-xl">
-            <div className="flex flex-col items-center space-y-4">
-              <div className="w-20 h-20 bg-[#49bace]/10 rounded-full flex items-center justify-center">
-                <Download size={40} className="text-[#49bace]" />
-              </div>
-              
-              <div className="text-center">
-                <h3 className="text-lg font-black text-white mb-1">Install Now</h3>
-                <p className="text-xs text-gray-400">Get instant access to all features</p>
-              </div>
-
-              <button
-                onClick={handleInstallClick}
-                className="w-full bg-gradient-to-r from-[#49bace] to-[#3da9bd] text-white font-bold py-4 px-6 rounded-xl shadow-lg hover:from-[#3da9bd] hover:to-[#49bace] transition-all transform hover:scale-[1.02] active:scale-[0.98]"
-              >
-                {deferredPrompt ? 'Install App' : 'Add to Home Screen'}
-              </button>
-
-              {deviceType === 'ios' && (
-                <button
-                  onClick={() => setShowInstallGuide(!showInstallGuide)}
-                  className="w-full bg-[#1a1f2e] border border-gray-700 text-gray-300 font-semibold py-3 px-6 rounded-xl hover:bg-[#212431] transition-all flex items-center justify-center space-x-2"
-                >
-                  <Share size={18} />
-                  <span>Show Install Instructions</span>
-                </button>
-              )}
+          <div style={s.card}>
+            <div style={s.installHint}>
+              <Smartphone size={14} color="#49bace" />
+              <span style={s.installHintText}>
+                {device === 'ios'
+                  ? 'Open in Safari to install'
+                  : deferredPrompt
+                    ? 'Chrome install prompt ready!'
+                    : 'Use Chrome browser for best experience'}
+              </span>
             </div>
+
+            {/* 🔥 THE MAIN BUTTON — triggers Chrome's native install dialog */}
+            <button
+              onClick={handleInstall}
+              style={installed ? { ...s.ctaBtn, ...s.ctaBtnDone } : s.ctaBtn}
+            >
+              {installed
+                ? <CheckCircle size={22} color="#fff" />
+                : <Download size={22} color="#fff" />}
+              <span style={s.ctaText}>{ctaLabel()}</span>
+            </button>
+
+            <div style={s.metaRow}>
+              <span style={s.metaItem}><Shield size={11} /> Secure</span>
+              <span style={s.metaDot} />
+              <span style={s.metaItem}>No APK needed</span>
+              <span style={s.metaDot} />
+              <span style={s.metaItem}>Always free</span>
+            </div>
+          </div>
+        )}
+
+        {/* iOS / Manual Guide */}
+        {showIOSGuide && (
+          <div style={s.card}>
+            <div style={s.guideHeader}>
+              <span style={{ fontSize: 26 }}>{device === 'ios' ? '🍎' : '📲'}</span>
+              <div>
+                <p style={s.guideTitle}>Manual Install Guide</p>
+                <p style={s.guideSub}>{device === 'ios' ? 'iPhone / iPad — Safari' : 'Follow browser steps'}</p>
+              </div>
+              <button onClick={() => setShowIOSGuide(false)} style={s.closeBtn}>✕</button>
+            </div>
+
+            <div style={s.stepsWrap}>
+              {IOS_STEPS.map(({ icon: Icon, label }, i) => (
+                <div key={i} style={s.step}>
+                  <div style={s.stepNum}>{i + 1}</div>
+                  <div style={s.stepIcon}><Icon size={16} color="#49bace" /></div>
+                  <p style={s.stepText}>{label}</p>
+                </div>
+              ))}
+            </div>
+
+            {device === 'ios' && (
+              <div style={s.tip}>
+                <AlertCircle size={13} color="#f59e0b" />
+                <span style={s.tipText}>Safari browser zaroori hai — Chrome/Firefox mein ye option nahi aata iOS par.</span>
+              </div>
+            )}
           </div>
         )}
 
         {/* Benefits */}
-        <div className="bg-[#212431] border border-gray-700 rounded-[2rem] p-6 shadow-xl">
-          <div className="flex items-center space-x-2 mb-4 px-2">
-            <CheckCircle size={18} className="text-[#49bace]" />
-            <h2 className="text-xs font-black uppercase tracking-widest text-gray-200">Why Install the App?</h2>
-          </div>
-          
-          <div className="space-y-3">
-            {[
-              { title: 'Lightning Fast', desc: 'Optimized performance for mobile devices', icon: '⚡' },
-              { title: 'Offline Access', desc: 'Access key features even without internet', icon: '📶' },
-              { title: 'Instant Notifications', desc: 'Never miss important updates and alerts', icon: '🔔' },
-              { title: 'One-Tap Access', desc: 'Open app directly from home screen', icon: '👆' },
-              { title: 'Secure & Safe', desc: 'Biometric authentication support', icon: '🔒' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-start space-x-3 pb-3 border-b border-gray-800 last:border-0 last:pb-0">
-                <span className="text-2xl flex-shrink-0">{item.icon}</span>
-                <div>
-                  <h3 className="text-sm font-bold text-white mb-0.5">{item.title}</h3>
-                  <p className="text-xs text-gray-500">{item.desc}</p>
-                </div>
+        <div style={s.card}>
+          <p style={s.sectionLabel}>Why install?</p>
+          {BENEFITS.map(({ icon: Icon, title, desc }, i) => (
+            <div key={i} style={{
+              ...s.benefitRow,
+              borderBottom: i < BENEFITS.length - 1 ? `1px solid #21262d` : 'none'
+            }}>
+              <div style={s.benefitIcon}><Icon size={18} color="#49bace" /></div>
+              <div>
+                <p style={s.benefitTitle}>{title}</p>
+                <p style={s.benefitDesc}>{desc}</p>
               </div>
+            </div>
+          ))}
+        </div>
+
+        {/* PWA Info */}
+        <div style={{ ...s.card, ...s.cardAccent }}>
+          <p style={s.pwaTitle}>What is PWA?</p>
+          <p style={s.pwaBody}>
+            Koi APK download nahi, koi App Store nahi — bas browser mein install karo aur
+            native app jaisi feel milegi. Automatic updates, offline support, aur home screen shortcut.
+          </p>
+          <div style={s.tagRow}>
+            {['No APK', 'Auto updates', 'Works offline', 'Lightweight'].map(t => (
+              <span key={t} style={s.tag}>{t}</span>
             ))}
           </div>
         </div>
 
-        {/* Install Guide Modal */}
-        {showInstallGuide && (
-          <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4" onClick={() => setShowInstallGuide(false)}>
-            <div className="bg-[#212431] border border-gray-700 rounded-[2rem] p-6 max-w-sm w-full shadow-2xl" onClick={(e) => e.stopPropagation()}>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-2">
-                  <span className="text-3xl">{instructions.icon}</span>
-                  <h3 className="text-lg font-bold text-white">{instructions.title}</h3>
-                </div>
-                <button onClick={() => setShowInstallGuide(false)} className="text-gray-400 hover:text-white">
-                  <AlertCircle size={24} />
-                </button>
-              </div>
-
-              <div className="space-y-3 mb-6">
-                {instructions.steps.map((step, index) => (
-                  <div key={index} className="flex items-start space-x-3">
-                    <div className="w-6 h-6 bg-[#49bace] rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-xs font-bold text-white">{index + 1}</span>
-                    </div>
-                    <p className="text-sm text-gray-300 pt-0.5">{step}</p>
-                  </div>
-                ))}
-              </div>
-
-              {deviceType === 'ios' && (
-                <div className="bg-[#1a1f2e] border border-gray-800 rounded-xl p-4 mb-4">
-                  <div className="flex items-center justify-center space-x-4">
-                    <Share size={32} className="text-[#49bace]" />
-                    <Plus size={32} className="text-[#49bace]" />
-                  </div>
-                  <p className="text-xs text-center text-gray-400 mt-2">Look for these icons in Safari</p>
-                </div>
-              )}
-
-              <button
-                onClick={() => setShowInstallGuide(false)}
-                className="w-full bg-[#49bace] text-white font-bold py-3 px-6 rounded-xl hover:bg-[#3da9bd] transition-all"
-              >
-                Got it!
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* How It Works */}
-        <div className="bg-gradient-to-br from-[#49bace]/10 to-[#212431] rounded-[2rem] border border-[#49bace]/30 p-6 shadow-xl">
-          <div className="text-center mb-4">
-            <h3 className="text-base font-black text-white mb-1">What is PWA?</h3>
-            <p className="text-xs text-gray-400">Progressive Web App Technology</p>
-          </div>
-          
-          <div className="space-y-3 text-sm text-gray-300">
-            <p>
-              Our app uses PWA technology to give you a native app experience without downloading from app stores.
-            </p>
-            <p>
-              <strong className="text-white">Benefits:</strong> No storage space needed, automatic updates, works on all devices.
-            </p>
-            <p>
-              <strong className="text-white">Privacy:</strong> Your data remains secure with bank-level encryption.
-            </p>
-          </div>
+        {/* Support */}
+        <div style={s.supportRow}>
+          <AlertCircle size={13} color="#64748b" />
+          <span style={s.supportText}>Koi problem?&nbsp;</span>
+          <button onClick={() => navigate('/support')} style={s.supportLink}>Contact Support →</button>
         </div>
 
-        {/* Support Info */}
-        <div className="bg-[#212431] border border-gray-700 rounded-[2rem] p-5 shadow-xl">
-          <div className="flex items-center space-x-2 mb-3">
-            <AlertCircle size={18} className="text-[#49bace]" />
-            <h3 className="text-xs font-bold text-white uppercase tracking-wider">Need Help?</h3>
-          </div>
-          <p className="text-xs text-gray-400 leading-relaxed">
-            If you're having trouble installing the app, please contact our support team. We're available 24/7 to assist you.
-          </p>
-          <button
-            onClick={() => navigate('/support')}
-            className="mt-3 text-[#49bace] text-xs font-bold hover:underline"
-          >
-            Contact Support →
-          </button>
+        {/* Footer */}
+        <div style={s.footer}>
+          <p style={s.footerNum}>50,000+</p>
+          <p style={s.footerLabel}>Happy traders worldwide</p>
+          <span style={s.footerBadge}>
+            <span style={s.footerDot} /> Trusted Platform
+          </span>
         </div>
 
-        {/* Bottom Banner */}
-        <div className="bg-gradient-to-br from-emerald-500/20 to-green-500/20 p-6 rounded-[2.5rem] border border-emerald-500/30 text-center shadow-2xl">
-          <h3 className="text-lg font-black text-white mb-2 tracking-tight">Join 50,000+ Happy Users</h3>
-          <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest mb-4">Start Trading Smarter Today</p>
-          <div className="flex justify-center items-center space-x-2">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-            <span className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">Trusted Platform</span>
-          </div>
-        </div>
       </div>
     </div>
   );
+};
+
+/* ═══════════════════════════════ STYLES ═══════════════════════════════ */
+const C = {
+  bg: '#0d1117', surface: '#161b22', border: '#21262d',
+  accent: '#49bace', accentD: '#2d9bb0',
+  text: '#e6edf3', muted: '#7d8590',
+  success: '#34d399',
+};
+
+const s = {
+  root: { background: C.bg, minHeight: '100vh', color: C.text, fontFamily: "'DM Sans','Segoe UI',sans-serif", paddingBottom: 40 },
+  topBar: { position: 'sticky', top: 0, zIndex: 50, background: C.surface, borderBottom: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px' },
+  iconBtn: { background: 'none', border: 'none', cursor: 'pointer', padding: 4, display: 'flex' },
+  topBarTitle: { fontSize: 16, fontWeight: 700, color: C.text },
+  content: { padding: '0 16px', display: 'flex', flexDirection: 'column', gap: 14 },
+
+  hero: { textAlign: 'center', paddingTop: 36, paddingBottom: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 },
+  logoWrap: { position: 'relative', width: 100, height: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  logoPulse: { position: 'absolute', inset: -10, borderRadius: '50%', background: `${C.accent}1a` },
+  logoBox: { width: 100, height: 100, borderRadius: 28, background: `linear-gradient(135deg,${C.accent},${C.accentD})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 0 3px ${C.border}, 0 16px 40px ${C.accent}44` },
+  heroTitle: { fontSize: 32, fontWeight: 900, letterSpacing: '-0.03em', margin: 0, background: `linear-gradient(135deg,#fff 30%,${C.accent})`, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' },
+  heroSub: { fontSize: 13, color: C.muted, margin: 0, lineHeight: 1.6, maxWidth: 260 },
+  pillRow: { display: 'flex', gap: 8 },
+  pill: { fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20, background: C.surface, border: `1px solid ${C.border}`, color: C.muted },
+  pillGreen: { color: C.success, borderColor: `${C.success}44`, background: `${C.success}11` },
+
+  installedBanner: { display: 'flex', alignItems: 'center', gap: 12, background: '#0d2b20', border: `1px solid ${C.success}44`, borderRadius: 16, padding: '14px 18px' },
+  installedTitle: { margin: 0, fontSize: 14, fontWeight: 700, color: C.text },
+  installedSub: { margin: 0, fontSize: 12, color: C.muted },
+
+  card: { background: C.surface, border: `1px solid ${C.border}`, borderRadius: 20, padding: '20px 18px', display: 'flex', flexDirection: 'column', gap: 14 },
+  cardAccent: { background: `linear-gradient(135deg,${C.accent}0d,${C.surface})`, borderColor: `${C.accent}33` },
+
+  installHint: { display: 'flex', alignItems: 'center', gap: 6, background: `${C.accent}0f`, border: `1px solid ${C.accent}2a`, borderRadius: 10, padding: '9px 12px' },
+  installHintText: { fontSize: 12, color: C.accent, fontWeight: 600 },
+
+  ctaBtn: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, background: `linear-gradient(135deg,${C.accent},${C.accentD})`, border: 'none', borderRadius: 14, padding: '17px 24px', cursor: 'pointer', boxShadow: `0 8px 24px ${C.accent}44` },
+  ctaBtnDone: { background: 'linear-gradient(135deg,#059669,#047857)', boxShadow: '0 8px 24px #05966944' },
+  ctaText: { fontSize: 15, fontWeight: 800, color: '#fff', letterSpacing: '0.01em' },
+
+  metaRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 },
+  metaItem: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: C.muted },
+  metaDot: { width: 3, height: 3, borderRadius: '50%', background: C.border },
+
+  guideHeader: { display: 'flex', alignItems: 'center', gap: 12 },
+  guideTitle: { margin: 0, fontSize: 15, fontWeight: 700, color: C.text },
+  guideSub: { margin: 0, fontSize: 11, color: C.muted },
+  closeBtn: { marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: C.muted, fontSize: 16 },
+  stepsWrap: { display: 'flex', flexDirection: 'column', gap: 10 },
+  step: { display: 'flex', alignItems: 'center', gap: 12, background: `${C.bg}99`, border: `1px solid ${C.border}`, borderRadius: 12, padding: '12px 14px' },
+  stepNum: { width: 22, height: 22, borderRadius: '50%', background: C.accent, color: '#fff', fontSize: 11, fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  stepIcon: { width: 34, height: 34, borderRadius: 10, background: `${C.accent}18`, border: `1px solid ${C.accent}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  stepText: { margin: 0, fontSize: 13, color: C.text, lineHeight: 1.5 },
+  tip: { display: 'flex', alignItems: 'flex-start', gap: 8, background: '#1c1400', border: '1px solid #f59e0b33', borderRadius: 10, padding: '10px 12px' },
+  tipText: { fontSize: 12, color: '#fbbf24', lineHeight: 1.5 },
+
+  sectionLabel: { margin: 0, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: C.muted },
+  benefitRow: { display: 'flex', alignItems: 'flex-start', gap: 14, padding: '12px 0' },
+  benefitIcon: { width: 38, height: 38, borderRadius: 10, background: `${C.accent}15`, border: `1px solid ${C.accent}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  benefitTitle: { margin: 0, fontSize: 14, fontWeight: 700, color: C.text },
+  benefitDesc: { margin: 0, fontSize: 12, color: C.muted, lineHeight: 1.5 },
+
+  pwaTitle: { margin: 0, fontSize: 15, fontWeight: 800, color: C.text },
+  pwaBody: { margin: 0, fontSize: 13, color: C.muted, lineHeight: 1.7 },
+  tagRow: { display: 'flex', flexWrap: 'wrap', gap: 8 },
+  tag: { fontSize: 11, fontWeight: 600, padding: '4px 10px', borderRadius: 20, background: `${C.accent}18`, border: `1px solid ${C.accent}33`, color: C.accent },
+
+  supportRow: { display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  supportText: { fontSize: 12, color: C.muted },
+  supportLink: { background: 'none', border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, color: C.accent },
+
+  footer: { background: 'linear-gradient(135deg,#0d2b20,#0d1117)', border: `1px solid ${C.success}33`, borderRadius: 24, padding: '28px 20px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 },
+  footerNum: { margin: 0, fontSize: 36, fontWeight: 900, color: C.success, letterSpacing: '-0.04em', lineHeight: 1 },
+  footerLabel: { margin: 0, fontSize: 13, color: C.text, fontWeight: 600 },
+  footerBadge: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.12em' },
+  footerDot: { display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: C.success },
 };
 
 export default AppDownload;
