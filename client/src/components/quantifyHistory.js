@@ -21,8 +21,6 @@ const shimmerCSS = `
 const HistorySkeleton = () => (
   <>
     <style>{shimmerCSS}</style>
-
-    {/* Summary cards skeleton */}
     <div className="grid grid-cols-2 gap-4 mb-6">
       {[1, 2].map(i => (
         <div key={i} className="bg-[#212431] border border-gray-700 p-4 rounded-2xl space-y-2">
@@ -31,12 +29,9 @@ const HistorySkeleton = () => (
         </div>
       ))}
     </div>
-
-    {/* Record cards skeleton */}
     <div className="space-y-4">
       {[1, 2, 3].map(i => (
         <div key={i} className="bg-[#212431] border border-gray-700 rounded-2xl p-5 space-y-4">
-          {/* Header row */}
           <div className="flex justify-between items-start">
             <div className="space-y-1">
               <div className="sk w-32 h-5" />
@@ -44,7 +39,6 @@ const HistorySkeleton = () => (
             </div>
             <div className="sk w-20 h-6 rounded-full" />
           </div>
-          {/* 2x2 grid */}
           <div className="grid grid-cols-2 gap-4">
             {[1, 2, 3, 4].map(j => (
               <div key={j} className="bg-[#1a1f2e] rounded-xl p-3 space-y-2">
@@ -62,7 +56,7 @@ const HistorySkeleton = () => (
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const QuantifyHistory = () => {
-  const navigate  = useNavigate();
+  const navigate = useNavigate();
 
   const [history,    setHistory]    = useState([]);
   const [loading,    setLoading]    = useState(true);
@@ -75,15 +69,21 @@ const QuantifyHistory = () => {
     hasPrev:      false,
   });
 
-  // ── Use a ref to track current page for fetching ──────────────────────────
-  // This avoids the double-fetch bug caused by having pagination.currentPage
-  // in the useEffect dependency array while also calling setPagination inside it
-  const pageRef = useRef(1);
+  // ── Ref flags to prevent StrictMode double-fetch ──────────────────────────
+  // React StrictMode (development) intentionally runs useEffect twice to
+  // detect side effects. This ref acts as a "already fetched" guard.
+  const isFetchingRef = useRef(false);
+  const hasFetchedRef = useRef(false);
 
-  // ── Fetch history ─────────────────────────────────────────────────────────
-  const fetchHistory = async (page = 1) => {
+  // ─── Core fetch function ──────────────────────────────────────────────────
+  const fetchHistory = async (page = 1, force = false) => {
+    // Prevent duplicate calls
+    if (isFetchingRef.current && !force) return;
+    isFetchingRef.current = true;
+
     setLoading(true);
     setError('');
+
     try {
       const token     = localStorage.getItem('token');
       const savedUser = JSON.parse(localStorage.getItem('user') || 'null');
@@ -110,62 +110,58 @@ const QuantifyHistory = () => {
         hasNext:      currentPage < totalPages,
         hasPrev:      currentPage > 1,
       });
+
     } catch (err) {
       console.error('Error fetching history:', err);
       setError('Failed to load history data');
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   };
 
-  // ── Only runs once on mount — no dependency on pagination state ───────────
+  // ── Mount — runs once, StrictMode safe ───────────────────────────────────
   useEffect(() => {
+    // hasFetchedRef prevents the second StrictMode call from firing
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     fetchHistory(1);
   }, []);
 
-  // ── Page change handler ───────────────────────────────────────────────────
+  // ── Page change ───────────────────────────────────────────────────────────
   const handlePageChange = (newPage) => {
-    pageRef.current = newPage;
-    setPagination(prev => ({ ...prev, currentPage: newPage }));
-    fetchHistory(newPage);
+    fetchHistory(newPage, true); // force = true bypasses isFetchingRef
   };
 
-  // ── Helpers ───────────────────────────────────────────────────────────────
-  const formatDate = (dateString) =>
-    new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric', month: 'short', day: 'numeric',
-    });
+  // ── Field helpers — backend QuantifyHistory model fields ─────────────────
+  // Backend saves: earning, endingTotalRevenue, startingBalance, isQuantifyingActive
+  // Wrong old names: todayEarning, totalRevenue, balance, isQuantifying
+  // Using ?? to support both old and new field names safely
+  const getEarning      = (r) => r.earning            ?? r.todayEarning ?? 0;
+  const getTotalRevenue = (r) => r.endingTotalRevenue  ?? r.totalRevenue ?? 0;
+  const getBalance      = (r) => r.startingBalance     ?? r.balance      ?? 0;
+  const getIsActive     = (r) => r.isQuantifyingActive ?? r.isQuantifying ?? false;
 
-  const formatTime = (dateString) =>
-    new Date(dateString).toLocaleTimeString('en-IN', {
-      hour: '2-digit', minute: '2-digit',
-    });
+  const totalEarned = history.reduce((sum, r) => sum + getEarning(r), 0);
+
+  // ── Formatters ────────────────────────────────────────────────────────────
+  const formatDate = (d) =>
+    new Date(d).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+
+  const formatTime = (d) =>
+    new Date(d).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
   const formatDuration = (minutes) => {
     if (!minutes || minutes === 0) return 'Full day';
     if (minutes < 60) return `${minutes} min`;
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    return `${h}h ${m}m`;
+    return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
   };
-
-  // ── QuantifyHistory model fields (from backend) ───────────────────────────
-  // Backend saves:  earning, endingTotalRevenue, startingBalance, isQuantifyingActive
-  // Wrong names:    todayEarning, totalRevenue, balance, isQuantifying
-  const getEarning      = (r) => r.earning          ?? r.todayEarning ?? 0;
-  const getTotalRevenue = (r) => r.endingTotalRevenue ?? r.totalRevenue ?? 0;
-  const getBalance      = (r) => r.startingBalance   ?? r.balance      ?? 0;
-  const getIsActive     = (r) => r.isQuantifyingActive ?? r.isQuantifying ?? false;
-
-  const totalEarned = history.reduce((sum, r) => sum + getEarning(r), 0);
 
   const getStatusBadge = (record) => {
     const active = getIsActive(record);
     return (
       <span className={`px-2 py-1 rounded-full text-xs font-bold ${
-        active
-          ? 'bg-emerald-500/20 text-emerald-400'
-          : 'bg-gray-500/20 text-gray-400'
+        active ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'
       }`}>
         {active ? 'ACTIVE' : 'COMPLETED'}
       </span>
@@ -187,12 +183,12 @@ const QuantifyHistory = () => {
 
       <div className="px-4 mt-6 space-y-6">
 
-        {/* Error state */}
+        {/* Error */}
         {error && (
           <div className="bg-rose-500/10 border border-rose-500/30 rounded-2xl p-4 text-center">
             <p className="text-rose-400 text-sm font-medium">{error}</p>
             <button
-              onClick={() => fetchHistory(pageRef.current)}
+              onClick={() => fetchHistory(pagination.currentPage, true)}
               className="mt-2 text-xs text-[#49bace] font-bold"
             >
               Retry
@@ -200,10 +196,8 @@ const QuantifyHistory = () => {
           </div>
         )}
 
-        {/* Skeleton OR real content */}
-        {loading ? (
-          <HistorySkeleton />
-        ) : (
+        {/* Skeleton OR content */}
+        {loading ? <HistorySkeleton /> : (
           <>
             {/* Summary Cards */}
             <div className="grid grid-cols-2 gap-4">
@@ -220,10 +214,7 @@ const QuantifyHistory = () => {
                   <IndianRupee size={16} className="text-amber-400" />
                   <span className="text-xs font-bold text-gray-400">TOTAL EARNED</span>
                 </div>
-                {/* FIX: was record.todayEarning → now getEarning(r) = record.earning */}
-                <span className="text-xl font-black text-white">
-                  ₹{totalEarned.toFixed(2)}
-                </span>
+                <span className="text-xl font-black text-white">₹{totalEarned.toFixed(2)}</span>
               </div>
             </div>
 
@@ -255,14 +246,13 @@ const QuantifyHistory = () => {
                       {getStatusBadge(record)}
                     </div>
 
-                    {/* Stats grid row 1 */}
+                    {/* Stats row 1 */}
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div className="bg-[#1a1f2e] rounded-xl p-3">
                         <div className="flex items-center space-x-2 mb-1">
                           <IndianRupee size={14} className="text-emerald-400" />
                           <span className="text-xs text-gray-400">Earning</span>
                         </div>
-                        {/* FIX: record.earning (not record.todayEarning) */}
                         <span className="text-lg font-bold text-emerald-400">
                           ₹{getEarning(record).toFixed(2)}
                         </span>
@@ -273,14 +263,13 @@ const QuantifyHistory = () => {
                           <TrendingUp size={14} className="text-amber-400" />
                           <span className="text-xs text-gray-400">Total Revenue</span>
                         </div>
-                        {/* FIX: record.endingTotalRevenue (not record.totalRevenue) */}
                         <span className="text-lg font-bold text-white">
                           ₹{getTotalRevenue(record).toFixed(2)}
                         </span>
                       </div>
                     </div>
 
-                    {/* Stats grid row 2 */}
+                    {/* Stats row 2 */}
                     <div className="grid grid-cols-2 gap-4">
                       <div className="bg-[#1a1f2e] rounded-xl p-3">
                         <div className="flex items-center space-x-2 mb-1">
@@ -297,7 +286,6 @@ const QuantifyHistory = () => {
                           <Calendar size={14} className="text-purple-400" />
                           <span className="text-xs text-gray-400">Balance</span>
                         </div>
-                        {/* FIX: record.startingBalance (not record.balance) */}
                         <span className="text-sm font-bold text-white">
                           ₹{getBalance(record).toFixed(2)}
                         </span>
