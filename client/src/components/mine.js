@@ -7,6 +7,154 @@ import { Copy, CopyCheckIcon, ChevronLeft, User, RefreshCw, LogOut, ShieldCheck,
 import { motion, AnimatePresence } from 'framer-motion'
 import { API_CONFIG } from '../config/apiConfig';
 
+// ✅ Shimmer wave skeleton component
+const Skeleton = ({ className = '' }) => (
+  <div
+    className={`relative overflow-hidden bg-[#2a2d3e] rounded-xl ${className}`}
+  >
+    <div
+      className="absolute inset-0"
+      style={{
+        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%)',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.5s infinite',
+      }}
+    />
+  </div>
+);
+
+// ✅ Shimmer keyframe inject (ek baar)
+const ShimmerStyle = () => (
+  <style>{`
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
+    }
+  `}</style>
+);
+
+// ✅ Full skeleton layout matching Mine page
+const MineSkeleton = () => (
+  <div className='w-full bg-[#101821] min-h-screen pb-24'>
+    <ShimmerStyle />
+
+    {/* Header Skeleton */}
+    <div className='bg-[#312c42] pt-10 pb-16 rounded-b-[40px] relative px-6'>
+      <div className='flex items-center space-x-4'>
+        {/* Avatar */}
+        <Skeleton className='w-[74px] h-[74px] rounded-full flex-shrink-0' />
+        <div className='flex flex-col gap-2 flex-1'>
+          <Skeleton className='h-5 w-36 rounded-lg' />
+          <Skeleton className='h-4 w-28 rounded-lg' />
+          <Skeleton className='h-3 w-44 rounded-lg' />
+        </div>
+      </div>
+    </div>
+
+    <div className='px-4 mt-4 space-y-6'>
+
+      {/* Wallet Card Skeleton */}
+      <div className='bg-[#212431] border border-gray-700/40 rounded-[2rem] p-6 mt-8'>
+        <div className='flex justify-between items-center mb-6'>
+          <div className='flex flex-col gap-2'>
+            <Skeleton className='h-3 w-20 rounded' />
+            <Skeleton className='h-7 w-32 rounded-lg' />
+          </div>
+          <Skeleton className='h-9 w-28 rounded-full' />
+        </div>
+        <div className='grid grid-cols-4 gap-2'>
+          {[1,2,3,4].map(i => (
+            <div key={i} className='flex flex-col items-center gap-2'>
+              <Skeleton className='w-11 h-11 rounded-2xl' />
+              <Skeleton className='h-3 w-12 rounded' />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* 2x2 Grid Skeleton */}
+      <div className='grid grid-cols-2 gap-3'>
+        {[1,2,3,4].map(i => (
+          <div key={i} className='bg-[#212431] border border-gray-700/40 p-4 rounded-[1.5rem] flex items-center space-x-3'>
+            <Skeleton className='w-10 h-10 rounded-xl flex-shrink-0' />
+            <div className='flex flex-col gap-2 flex-1'>
+              <Skeleton className='h-3 w-20 rounded' />
+              <Skeleton className='h-2 w-16 rounded' />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* List Items Skeleton */}
+      <div className='bg-[#212431] border border-gray-700/40 rounded-[1.5rem] overflow-hidden'>
+        {[1,2,3].map((i) => (
+          <div key={i} className={`flex items-center px-5 py-4 gap-3 ${i !== 3 ? 'border-b border-gray-700/50' : ''}`}>
+            <Skeleton className='w-6 h-6 rounded-lg flex-shrink-0' />
+            <Skeleton className='h-4 w-28 rounded' />
+            <div className='ml-auto'>
+              <Skeleton className='h-4 w-16 rounded' />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Service Center Skeleton */}
+      <div className='bg-[#212431] border border-gray-700/40 rounded-[2rem] p-6'>
+        <Skeleton className='h-4 w-32 rounded mb-8' />
+        <div className='grid grid-cols-4 gap-y-8'>
+          {[1,2,3,4,5,6,7].map(i => (
+            <div key={i} className='flex flex-col items-center gap-2'>
+              <Skeleton className='w-14 h-14 rounded-2xl' />
+              <Skeleton className='h-2.5 w-12 rounded' />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Feedback Skeleton */}
+      <div className='bg-[#212431] border border-gray-700/40 rounded-[2rem] p-6'>
+        <Skeleton className='h-4 w-40 rounded mb-6' />
+        <div className='grid grid-cols-2 gap-4'>
+          {[1,2].map(i => (
+            <div key={i} className='bg-[#101821] border border-gray-800 p-4 rounded-2xl flex items-center gap-3'>
+              <Skeleton className='w-10 h-10 rounded-xl flex-shrink-0' />
+              <div className='flex flex-col gap-2 flex-1'>
+                <Skeleton className='h-3 w-16 rounded' />
+                <Skeleton className='h-2 w-20 rounded' />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Account Details Skeleton */}
+      <div className='bg-[#212431] border border-gray-700/40 rounded-[2rem] overflow-hidden'>
+        <div className='px-6 py-5 bg-[#312c42]/50 border-b border-gray-700/50 flex justify-between items-center'>
+          <div className='flex items-center gap-3'>
+            <Skeleton className='w-9 h-9 rounded-lg' />
+            <Skeleton className='h-4 w-32 rounded' />
+          </div>
+          <Skeleton className='h-3 w-20 rounded' />
+        </div>
+        <div className='p-6'>
+          <div className='grid grid-cols-2 gap-6'>
+            {[1,2,3,4].map(i => (
+              <div key={i} className='bg-[#101821] p-4 rounded-2xl border border-gray-800/50 flex flex-col gap-2'>
+                <Skeleton className='h-2.5 w-20 rounded' />
+                <Skeleton className='h-6 w-24 rounded-lg' />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Logout Button Skeleton */}
+      <Skeleton className='mt-6 mb-12 w-full h-14 rounded-2xl' />
+
+    </div>
+  </div>
+);
+
 const Mine = () => {
   const [copied, setCopied] = useState(false);
   const [userData, setUserData] = useState({ name: 'Loading...', uid: '------', balance: 0 });
@@ -19,7 +167,6 @@ const Mine = () => {
   useEffect(() => {
     const fetchUserData = async () => {
       try {
-        // Get user from localStorage
         const savedUserStr = localStorage.getItem('user');
         let savedUser = null;
         try {
@@ -27,21 +174,17 @@ const Mine = () => {
             ? JSON.parse(savedUserStr)
             : null;
         } catch (e) {
-          // console.error('Invalid user in localStorage:', e);
-          localStorage.removeItem('user'); // corrupt data clear karo
+          localStorage.removeItem('user');
         }
         const token = localStorage.getItem('token');
 
         if (savedUser && token) {
-          // Fetch fresh user data from server
           const res = await axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
             headers: { Authorization: `Bearer ${token}` }
           });
 
-          // Check if response data exists
           const user = res.data?.user || savedUser;
 
-          // Calculate UID
           let calculatedUid = '------';
           if (user.phone) {
             calculatedUid = user.phone.slice(-6);
@@ -52,7 +195,6 @@ const Mine = () => {
             }, 0)).toString().slice(-6);
           }
 
-          // Calculate total balance based on the condition: if quantify > balance, show quantify; otherwise show balance
           const totalBalance = Math.max(user.balance ?? 0, user.quantify ?? 0);
 
           setUserData({
@@ -63,12 +205,10 @@ const Mine = () => {
             quantify: user.quantify ?? 0
           });
 
-          // Update localStorage with fresh data
           if (user && typeof user === 'object') {
             localStorage.setItem('user', JSON.stringify(user));
           }
 
-          // Fetch deposit history to calculate approved deposit amount
           const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${user._id}`, {
             headers: { Authorization: `Bearer ${token}` }
           });
@@ -80,7 +220,6 @@ const Mine = () => {
 
           setApprovedDepositAmount(approvedAmount);
 
-          // Fetch quantify data
           try {
             const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${user._id}`, {
               headers: { Authorization: `Bearer ${token}` }
@@ -90,11 +229,8 @@ const Mine = () => {
               totalRevenue: quantifyRes.data.totalRevenue,
               todayEarning: quantifyRes.data.todayEarning
             });
-          } catch (quantifyErr) {
-            // console.error('Error fetching quantify data:', quantifyErr);
-          }
+          } catch (quantifyErr) {}
         } else {
-          // Fallback to localStorage data
           let calculatedUid = '775383';
           if (savedUser?.phone) {
             calculatedUid = savedUser.phone.slice(-6);
@@ -112,7 +248,6 @@ const Mine = () => {
             total_amount: savedUser?.total_amount ?? 0
           });
 
-          // Fetch deposit history to calculate approved deposit amount
           const token = localStorage.getItem('token');
           if (token && savedUser?._id) {
             try {
@@ -127,7 +262,6 @@ const Mine = () => {
 
               setApprovedDepositAmount(approvedAmount);
 
-              // Fetch quantify data
               try {
                 const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
                   headers: { Authorization: `Bearer ${token}` }
@@ -137,17 +271,11 @@ const Mine = () => {
                   totalRevenue: quantifyRes.data.totalRevenue,
                   todayEarning: quantifyRes.data.todayEarning
                 });
-              } catch (quantifyErr) {
-                // console.error('Error fetching quantify data:', quantifyErr);
-              }
-            } catch (depositErr) {
-              // console.error('Error fetching deposit history:', depositErr);
-            }
+              } catch (quantifyErr) {}
+            } catch (depositErr) {}
           }
         }
       } catch (err) {
-        // console.error('Error fetching user data:', err);
-        // Fallback to localStorage data on error
         const savedUserStr = localStorage.getItem('user');
         const savedUser = savedUserStr ? JSON.parse(savedUserStr) : {};
         let calculatedUid = '775383';
@@ -160,7 +288,6 @@ const Mine = () => {
           }, 0)).toString().slice(-6);
         }
 
-        // Calculate total balance based on the condition: if quantify > balance, show quantify; otherwise show balance
         const totalBalance = Math.max(savedUser?.balance ?? 0, savedUser?.quantify ?? 0);
 
         setUserData({
@@ -171,7 +298,6 @@ const Mine = () => {
           quantify: savedUser?.quantify ?? 0
         });
 
-        // Fetch deposit history to calculate approved deposit amount
         const token = localStorage.getItem('token');
         if (token && savedUser?._id) {
           try {
@@ -186,7 +312,6 @@ const Mine = () => {
 
             setApprovedDepositAmount(approvedAmount);
 
-            // Fetch quantify data
             try {
               const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
                 headers: { Authorization: `Bearer ${token}` }
@@ -196,12 +321,8 @@ const Mine = () => {
                 totalRevenue: quantifyRes.data.totalRevenue,
                 todayEarning: quantifyRes.data.todayEarning
               });
-            } catch (quantifyErr) {
-              // console.error('Error fetching quantify data:', quantifyErr);
-            }
-          } catch (depositErr) {
-            // console.error('Error fetching deposit history:', depositErr);
-          }
+            } catch (quantifyErr) {}
+          } catch (depositErr) {}
         }
       } finally {
         setLoading(false);
@@ -217,6 +338,9 @@ const Mine = () => {
       setTimeout(() => setCopied(false), 2000);
     });
   };
+
+  // ✅ Skeleton dikhao jab tak data load ho
+  if (loading) return <MineSkeleton />;
 
   return (
     <div className='w-full bg-[#101821] min-h-screen pb-24'>
@@ -249,7 +373,7 @@ const Mine = () => {
       {/* Overlapping Content Container */}
       <div className='px-4 mt-4 space-y-6'>
 
-        {/* Wallet Section with Enter Wallet (Added top margin) */}
+        {/* Wallet Section */}
         <div className='bg-[#212431] border border-gray-700 rounded-[2rem] shadow-2xl p-6 mt-8'>
           <div className='flex justify-between items-center mb-6'>
             <div className='flex flex-col'>
@@ -317,7 +441,7 @@ const Mine = () => {
           ))}
         </div>
 
-        {/* Service Center Grid (4 icons per line) */}
+        {/* Service Center Grid */}
         <div className='bg-[#212431] border border-gray-700 rounded-[2rem] p-6 shadow-xl'>
           <div className='flex items-center space-x-2 mb-8 px-2'>
             <div className='w-1 h-4 bg-[#49bace] rounded-full'></div>
@@ -411,7 +535,7 @@ const Mine = () => {
           </div>
         </div>
 
-        {/* Sign Out Button (Added bottom margin) */}
+        {/* Sign Out Button */}
         <button
           className="mt-6 mb-12 w-full py-4 bg-[#101821] border border-[#49bace]/30 text-[#49bace] font-bold rounded-2xl shadow-xl flex items-center justify-center space-x-3 active:scale-[0.98] transition-all hover:bg-[#49bace]/5"
           onClick={() => setShowLogoutModal(true)}
@@ -437,7 +561,6 @@ const Mine = () => {
                 exit={{ scale: 0.9, opacity: 0, y: 20 }}
                 className="relative bg-[#212431] border border-gray-700 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl overflow-hidden"
               >
-                {/* Background Glow */}
                 <div className="absolute -top-24 -right-24 w-48 h-48 blur-[80px] rounded-full bg-rose-500/20" />
 
                 <div className="flex flex-col items-center text-center space-y-6">
@@ -463,7 +586,6 @@ const Mine = () => {
                     </button>
                     <button
                       onClick={() => {
-                        // Clear all user data including quantify animation state
                         localStorage.removeItem('token');
                         localStorage.removeItem('user');
                         localStorage.removeItem('quantifyAnimationActive');
