@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { ChevronLeft, Calendar, TrendingUp, Clock, IndianRupee } from 'lucide-react';
 import { API_CONFIG } from '../config/apiConfig';
 
 const QuantifyHistory = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -104,7 +105,7 @@ const QuantifyHistory = () => {
       <div className="bg-[#101821] min-h-screen text-white pb-32 font-sans">
         <div className="sticky top-0 z-50 bg-[#312c42] px-4 py-4 flex items-center justify-between shadow-lg">
           <button onClick={() => navigate('/mine')} className="p-1">
-            <ChevronLeft size={24} className="text-gray-300" />
+          <button onClick={() => window.history.back()} className='p-1'>
           </button>
           <h1 className="text-lg font-bold tracking-tight">Quantify History</h1>
           <div className="w-6"></div>
@@ -122,7 +123,7 @@ const QuantifyHistory = () => {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#312c42] px-4 py-4 flex items-center justify-between shadow-lg">
         <button onClick={() => navigate('/mine')} className="p-1">
-          <ChevronLeft size={24} className="text-gray-300" />
+        <button onClick={() => window.history.back()} className='p-1'>
         </button>
         <h1 className="text-lg font-bold tracking-tight">Quantify History</h1>
         <div className="w-6"></div>

@@ -155,13 +155,15 @@ const Record = () => {
         // console.log('Referral rewards not available');
       }
       
-      // Fetch ALL user's quantify history (not just daily, but all historical records)
+      // ─── FIX: /history/daily route does not exist in backend ─────────────────
+      // Correct route is /api/quantify/history (works for current user)
+      // /history/daily was giving 404 error
       let tradeHistory = [];
       try {
-        // Fetch all historical trade records - no time limit
-        const historyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/history/daily?page=1&limit=100`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const historyRes = await axios.get(
+          `${API_CONFIG.BASE_URL}/api/quantify/history?page=1&limit=100`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
         tradeHistory = historyRes.data.history || [];
         // console.log('Fetched trade history records:', tradeHistory.length);
       } catch (err) {
