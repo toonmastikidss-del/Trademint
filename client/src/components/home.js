@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useNavigate } from 'react-router-dom'
 import AIGLogo from '../pictures/AIGlogo.png'
 import Gift from '../pictures/gift.png'
-import { NotebookText, Newspaper, Tag, ChevronRight, Volume2, Headset, User, ShieldCheck, Star } from 'lucide-react'
+import { NotebookText, Newspaper, Tag, ChevronRight, Volume2, Headset, User, Star } from 'lucide-react'
 import Slider from './slider';
 import { Link } from 'react-router-dom';
 import axios from "axios";
@@ -11,9 +11,6 @@ import axios from "axios";
 
 const CRYPTO_SYMBOLS = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "SOLUSDT", "TRXUSDT", "LTCUSDT"];
 
-// Binance WebSocket stream URL — one combined stream for all symbols
-// This sends a message every time ANY of these tickers updates (~1s)
-// Zero repeated HTTP requests — one persistent TCP connection
 const WS_URL = `wss://stream.binance.com:9443/stream?streams=${
   CRYPTO_SYMBOLS.map(s => `${s.toLowerCase()}@ticker`).join('/')
 }`;
@@ -28,122 +25,138 @@ const formatCryptoRow = (d) => ({
   change: parseFloat(d.P).toFixed(2),
 });
 
-// ─── Static mock data for non-crypto markets (no real free API needed) ────────
+// ─── Static mock data ─────────────────────────────────────────────────────────
 
-const getStockData   = () => [
-  { name: "AAPL",    price: (185.92 + Math.random()).toFixed(2),           change: (Math.random() * 2  - 0.5).toFixed(2) },
-  { name: "MSFT",    price: (402.15 + Math.random()).toFixed(2),           change: (Math.random() * 1.5 - 0.2).toFixed(2) },
-  { name: "GOOGL",   price: (142.70 + Math.random()).toFixed(2),           change: (Math.random() * 3  - 1.5).toFixed(2) },
-  { name: "AMZN",    price: (174.45 + Math.random()).toFixed(2),           change: (Math.random() * 2  - 1).toFixed(2)   },
-  { name: "TSLA",    price: (193.57 + Math.random()).toFixed(2),           change: (Math.random() * 5  - 2.5).toFixed(2) },
+const getStockData = () => [
+  { name: "AAPL",  price: (185.92 + Math.random()).toFixed(2),          change: (Math.random() * 2   - 0.5).toFixed(2)  },
+  { name: "MSFT",  price: (402.15 + Math.random()).toFixed(2),          change: (Math.random() * 1.5 - 0.2).toFixed(2)  },
+  { name: "GOOGL", price: (142.70 + Math.random()).toFixed(2),          change: (Math.random() * 3   - 1.5).toFixed(2)  },
+  { name: "AMZN",  price: (174.45 + Math.random()).toFixed(2),          change: (Math.random() * 2   - 1).toFixed(2)    },
+  { name: "TSLA",  price: (193.57 + Math.random()).toFixed(2),          change: (Math.random() * 5   - 2.5).toFixed(2)  },
 ];
 
-const getForexData   = () => [
-  { name: "EUR/USD", price: (1.0821  + Math.random() * 0.001).toFixed(4), change: (Math.random() * 0.1  - 0.05).toFixed(3) },
-  { name: "GBP/USD", price: (1.2634  + Math.random() * 0.001).toFixed(4), change: (Math.random() * 0.1  - 0.05).toFixed(3) },
-  { name: "USD/JPY", price: (148.12  + Math.random() * 0.1).toFixed(2),   change: (Math.random() * 0.2  - 0.1).toFixed(2)  },
-  { name: "AUD/USD", price: (0.6542  + Math.random() * 0.001).toFixed(4), change: (Math.random() * 0.1  - 0.05).toFixed(3) },
+const getForexData = () => [
+  { name: "EUR/USD", price: (1.0821 + Math.random() * 0.001).toFixed(4), change: (Math.random() * 0.1  - 0.05).toFixed(3) },
+  { name: "GBP/USD", price: (1.2634 + Math.random() * 0.001).toFixed(4), change: (Math.random() * 0.1  - 0.05).toFixed(3) },
+  { name: "USD/JPY", price: (148.12 + Math.random() * 0.1).toFixed(2),   change: (Math.random() * 0.2  - 0.1).toFixed(2)  },
+  { name: "AUD/USD", price: (0.6542 + Math.random() * 0.001).toFixed(4), change: (Math.random() * 0.1  - 0.05).toFixed(3) },
 ];
 
-const getBondsData   = () => [
-  { name: "US 10Y",  price: (4.215   + Math.random() * 0.01).toFixed(3),  change: (Math.random() * 0.05 - 0.02).toFixed(2) },
-  { name: "US 2Y",   price: (4.582   + Math.random() * 0.01).toFixed(3),  change: (Math.random() * 0.05 - 0.02).toFixed(2) },
-  { name: "US 30Y",  price: (4.391   + Math.random() * 0.01).toFixed(3),  change: (Math.random() * 0.05 - 0.02).toFixed(2) },
-  { name: "UK 10Y",  price: (3.980   + Math.random() * 0.01).toFixed(3),  change: (Math.random() * 0.05 - 0.02).toFixed(2) },
+const getBondsData = () => [
+  { name: "US 10Y", price: (4.215 + Math.random() * 0.01).toFixed(3), change: (Math.random() * 0.05 - 0.02).toFixed(2) },
+  { name: "US 2Y",  price: (4.582 + Math.random() * 0.01).toFixed(3), change: (Math.random() * 0.05 - 0.02).toFixed(2) },
+  { name: "US 30Y", price: (4.391 + Math.random() * 0.01).toFixed(3), change: (Math.random() * 0.05 - 0.02).toFixed(2) },
+  { name: "UK 10Y", price: (3.980 + Math.random() * 0.01).toFixed(3), change: (Math.random() * 0.05 - 0.02).toFixed(2) },
 ];
+
+// ─── Static lists (defined outside component — never changes, no re-render) ───
+
+const WITH_DATA = [
+  { username: "MEMBER_10001_OFT", amount: "15,000" },
+  { username: "MEMBER_10002_OFT", amount: "8,500"  },
+  { username: "MEMBER_10003_OFT", amount: "20,000" },
+  { username: "MEMBER_10004_OFT", amount: "400"    },
+  { username: "MEMBER_10005_OFT", amount: "650"    },
+  { username: "MEMBER_10006_OFT", amount: "850"    },
+  { username: "MEMBER_10007_OFT", amount: "950"    },
+  { username: "MEMBER_10008_OFT", amount: "350"    },
+  { username: "MEMBER_10009_OFT", amount: "550"    },
+  { username: "MEMBER_10010_OFT", amount: "750"    },
+  { username: "MEMBER_10011_OFT", amount: "450"    },
+  { username: "MEMBER_10012_OFT", amount: "780"    },
+  { username: "MEMBER_10013_OFT", amount: "920"    },
+  { username: "MEMBER_10014_OFT", amount: "520"    },
+  { username: "MEMBER_10015_OFT", amount: "680"    },
+  { username: "MEMBER_10016_OFT", amount: "250"    },
+  { username: "MEMBER_10017_OFT", amount: "1,350"  },
+  { username: "MEMBER_10018_OFT", amount: "800"    },
+  { username: "MEMBER_10019_OFT", amount: "1,750"  },
+  { username: "MEMBER_10020_OFT", amount: "450"    },
+  { username: "MEMBER_10021_OFT", amount: "1,050"  },
+  { username: "MEMBER_10022_OFT", amount: "680"    },
+  { username: "MEMBER_10023_OFT", amount: "1,550"  },
+  { username: "MEMBER_10024_OFT", amount: "320"    },
+  { username: "MEMBER_10025_OFT", amount: "1,200"  },
+  { username: "MEMBER_10026_OFT", amount: "750"    },
+  { username: "MEMBER_10027_OFT", amount: "1,850"  },
+  { username: "MEMBER_10028_OFT", amount: "580"    },
+  { username: "MEMBER_10029_OFT", amount: "1,450"  },
+  { username: "MEMBER_10030_OFT", amount: "920"    },
+  { username: "MEMBER_10031_OFT", amount: "1,600"  },
+  { username: "MEMBER_10032_OFT", amount: "280"    },
+  { username: "MEMBER_10033_OFT", amount: "1,150"  },
+  { username: "MEMBER_10034_OFT", amount: "650"    },
+  { username: "MEMBER_10035_OFT", amount: "1,950"  },
+  { username: "MEMBER_10036_OFT", amount: "420"    },
+  { username: "MEMBER_10037_OFT", amount: "1,300"  },
+  { username: "MEMBER_10038_OFT", amount: "880"    },
+  { username: "MEMBER_10039_OFT", amount: "1,700"  },
+  { username: "MEMBER_10040_OFT", amount: "100"    },
+];
+
+const TESTIMONIAL_DATA = [
+  { name: "Rahul Sharma", rating: 5, comment: "Best platform for quick earnings. Highly recommended!", gender: "M" },
+  { name: "Priya Patel",  rating: 4, comment: "Interface is very smooth and deposit process is instant.", gender: "F" },
+  { name: "Amit Gupta",   rating: 5, comment: "I received my withdrawal within 10 minutes. Trusted app!", gender: "M" },
+  { name: "Sneha Reddy",  rating: 5, comment: "Very secure and reliable. I love the user experience here.", gender: "F" },
+  { name: "Vikram Singh", rating: 4, comment: "Great support team and clear instructions for everything.", gender: "M" },
+  { name: "Ananya Das",   rating: 5, comment: "Amazing platform! My earnings have doubled since I joined.", gender: "F" },
+  { name: "Rohan Mehta",  rating: 5, comment: "Super fast withdrawals and excellent customer support.", gender: "M" },
+  { name: "Divya Nair",   rating: 4, comment: "Love the transparency and security features of this app.", gender: "F" },
+];
+
+const MARKET_ITEMS = ['Stock', 'Cryptocoin', 'Bonds', 'Forex'];
+
+// maskUsername also outside — pure function, no need inside component
+const maskUsername = (username) => {
+  if (username.length <= 5) return username;
+  return username.slice(0, -5) + "*****";
+};
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 const Home = () => {
-  const [marketData,     setMarketData]     = useState([]);
-  const [loading,        setLoading]        = useState(false);
-  const [selectedMarket, setSelectedMarket] = useState('Cryptocoin');
+  // ── 1. All hooks first — order must never change ───────────────────────────
+  const navigate = useNavigate();                              // ← MOVED TO TOP
+
+  const [marketData,        setMarketData]        = useState([]);
+  const [loading,           setLoading]           = useState(false);
+  const [selectedMarket,    setSelectedMarket]    = useState('Cryptocoin');
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
-  // ─── Static data ────────────────────────────────────────────────────────────
+  const wsRef          = useRef(null);
+  const pollIntervalRef = useRef(null);
+  const cryptoCacheRef = useRef({});
 
-  const withData = [
-    { username: "MEMBER_10001_OFT", phone: "98765*****", amount: "15,000" },
-    { username: "MEMBER_10002_OFT", phone: "87654*****", amount: "8,500" },
-    { username: "MEMBER_10003_OFT", phone: "76543*****", amount: "20,000" },
-    { username: "MEMBER_10004_OFT", phone: "95432*****", amount: "400" },
-    { username: "MEMBER_10005_OFT", phone: "84321*****", amount: "650" },
-    { username: "MEMBER_10006_OFT", phone: "73210*****", amount: "850" },
-    { username: "MEMBER_10007_OFT", phone: "92108*****", amount: "950" },
-    { username: "MEMBER_10008_OFT", phone: "81097*****", amount: "350" },
-    { username: "MEMBER_10009_OFT", phone: "70986*****", amount: "550" },
-    { username: "MEMBER_10010_OFT", phone: "89875*****", amount: "750" },
-    { username: "MEMBER_10011_OFT", phone: "78764*****", amount: "450" },
-    { username: "MEMBER_10012_OFT", phone: "67653*****", amount: "780" },
-    { username: "MEMBER_10013_OFT", phone: "96542*****", amount: "920" },
-    { username: "MEMBER_10014_OFT", phone: "85431*****", amount: "520" },
-    { username: "MEMBER_10015_OFT", phone: "74320*****", amount: "680" },
-    { username: "MEMBER_10016_OFT", phone: "63219*****", amount: "250" },
-    { username: "MEMBER_10017_OFT", phone: "52108*****", amount: "1,350" },
-    { username: "MEMBER_10018_OFT", phone: "91097*****", amount: "800" },
-    { username: "MEMBER_10019_OFT", phone: "80986*****", amount: "1,750" },
-    { username: "MEMBER_10020_OFT", phone: "69875*****", amount: "450" },
-    { username: "MEMBER_10021_OFT", phone: "58764*****", amount: "1,050" },
-    { username: "MEMBER_10022_OFT", phone: "47653*****", amount: "680" },
-    { username: "MEMBER_10023_OFT", phone: "36542*****", amount: "1,550" },
-    { username: "MEMBER_10024_OFT", phone: "25431*****", amount: "320" },
-    { username: "MEMBER_10025_OFT", phone: "14320*****", amount: "1,200" },
-    { username: "MEMBER_10026_OFT", phone: "93219*****", amount: "750" },
-    { username: "MEMBER_10027_OFT", phone: "82108*****", amount: "1,850" },
-    { username: "MEMBER_10028_OFT", phone: "71097*****", amount: "580" },
-    { username: "MEMBER_10029_OFT", phone: "60986*****", amount: "1,450" },
-    { username: "MEMBER_10030_OFT", phone: "59875*****", amount: "920" },
-    { username: "MEMBER_10031_OFT", phone: "48764*****", amount: "1,600" },
-    { username: "MEMBER_10032_OFT", phone: "37653*****", amount: "280" },
-    { username: "MEMBER_10033_OFT", phone: "26542*****", amount: "1,150" },
-    { username: "MEMBER_10034_OFT", phone: "15431*****", amount: "650" },
-    { username: "MEMBER_10035_OFT", phone: "94320*****", amount: "1,950" },
-    { username: "MEMBER_10036_OFT", phone: "83219*****", amount: "420" },
-    { username: "MEMBER_10037_OFT", phone: "72108*****", amount: "1,300" },
-    { username: "MEMBER_10038_OFT", phone: "61097*****", amount: "880" },
-    { username: "MEMBER_10039_OFT", phone: "50986*****", amount: "1,700" },
-    { username: "MEMBER_10040_OFT", phone: "49875*****", amount: "100" },
-  ];
+  // ── 2. Derived values — after hooks, before useEffects ────────────────────
+  const isLoggedIn = !!localStorage.getItem('token');         // ← MOVED UP
 
-  const testimonialData = [
-    { name: "Rahul Sharma",  rating: 5, comment: "Best platform for quick earnings. Highly recommended!", gender: "M" },
-    { name: "Priya Patel",   rating: 4, comment: "Interface is very smooth and deposit process is instant.", gender: "F" },
-    { name: "Amit Gupta",    rating: 5, comment: "I received my withdrawal within 10 minutes. Trusted app!", gender: "M" },
-    { name: "Sneha Reddy",   rating: 5, comment: "Very secure and reliable. I love the user experience here.", gender: "F" },
-    { name: "Vikram Singh",  rating: 4, comment: "Great support team and clear instructions for everything.", gender: "M" },
-    { name: "Ananya Das",    rating: 5, comment: "Amazing platform! My earnings have doubled since I joined.", gender: "F" },
-    { name: "Rohan Mehta",   rating: 5, comment: "Super fast withdrawals and excellent customer support.", gender: "M" },
-    { name: "Divya Nair",    rating: 4, comment: "Love the transparency and security features of this app.", gender: "F" },
-  ];
+  // ── 3. Stable callbacks — after hooks, before useEffects ─────────────────
 
-  // Refs so we can cleanup properly
-  const wsRef           = useRef(null);   // WebSocket instance
-  const pollIntervalRef = useRef(null);   // setInterval for non-crypto markets
-  const cryptoCacheRef  = useRef({});     // latest ticker data keyed by symbol
+  const handleGlobalClick = (e) => {                          // ← MOVED UP
+    if (!localStorage.getItem('token')) {
+      e.preventDefault();
+      e.stopPropagation();
+      navigate('/login');
+    }
+  };
 
-  // ── WebSocket setup for Crypto ─────────────────────────────────────────────
   const openCryptoWS = () => {
-    // Avoid duplicate connections
     if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) return;
-
     setLoading(true);
 
     const ws = new WebSocket(WS_URL);
     wsRef.current = ws;
 
-    ws.onopen = () => {
-      // console.log('[WS] Binance stream connected');
-    };
+    ws.onopen = () => {};
 
     ws.onmessage = (event) => {
       try {
         const msg  = JSON.parse(event.data);
-        const tick = msg.data; // combined stream wraps payload in .data
+        const tick = msg.data;
 
-        // Update cache
         cryptoCacheRef.current[tick.s] = formatCryptoRow(tick);
 
-        // Rebuild ordered market data from cache whenever ANY ticker arrives
         const ordered = CRYPTO_SYMBOLS
           .map(sym => cryptoCacheRef.current[sym])
           .filter(Boolean);
@@ -157,14 +170,8 @@ const Home = () => {
       }
     };
 
-    ws.onerror = () => {
-      // console.warn('[WS] Error — falling back to REST snapshot');
-      fallbackCryptoREST();
-    };
-
-    ws.onclose = () => {
-      // console.log('[WS] Closed');
-    };
+    ws.onerror = () => { fallbackCryptoREST(); };
+    ws.onclose = () => {};
   };
 
   const closeCryptoWS = () => {
@@ -175,7 +182,6 @@ const Home = () => {
     cryptoCacheRef.current = {};
   };
 
-  // One-shot REST fetch used as WebSocket fallback only
   const fallbackCryptoREST = async () => {
     try {
       const resp = await axios.get(
@@ -191,20 +197,17 @@ const Home = () => {
         }))
       );
     } catch {
-      // hard fallback
       setMarketData([
-        { name: "BTC/USDT", price: "68409.65", change: "0.03" },
+        { name: "BTC/USDT", price: "68409.65", change: "0.03"  },
         { name: "ETH/USDT", price: "2451.20",  change: "-0.15" },
-        { name: "BNB/USDT", price: "557.83",   change: "0.01" },
-        { name: "SOL/USDT", price: "145.67",   change: "1.20" },
+        { name: "BNB/USDT", price: "557.83",   change: "0.01"  },
+        { name: "SOL/USDT", price: "145.67",   change: "1.20"  },
       ]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ── Polling for non-crypto (Stock / Forex / Bonds) ────────────────────────
-  // These use simulated data so 30s is fine — no real API calls
   const startPoll = (category) => {
     const getData = () => {
       setLoading(true);
@@ -213,9 +216,8 @@ const Home = () => {
       else if (category === 'Bonds') setMarketData(getBondsData());
       setLoading(false);
     };
-
-    getData(); // immediate first render
-    pollIntervalRef.current = setInterval(getData, 30_000); // 30s — low load
+    getData();
+    pollIntervalRef.current = setInterval(getData, 30_000);
   };
 
   const stopPoll = () => {
@@ -225,9 +227,10 @@ const Home = () => {
     }
   };
 
-  // ── Switch market ─────────────────────────────────────────────────────────
+  // ── 4. useEffects last — all declarations are already initialized above ───
+
+  // Market switching
   useEffect(() => {
-    // Teardown previous
     closeCryptoWS();
     stopPoll();
     setMarketData([]);
@@ -238,45 +241,24 @@ const Home = () => {
       startPoll(selectedMarket);
     }
 
-    // Cleanup on unmount or tab switch
     return () => {
       closeCryptoWS();
       stopPoll();
     };
   }, [selectedMarket]);
 
-  const maskUsername = (username) => {
-    if (username.length <= 5) return username;
-    return username.slice(0, -5) + "*****";
-  };
-
-  // ── Testimonial rotation ──────────────────────────────────────────────────
+  // Testimonial rotation
   useEffect(() => {
     const interval = setInterval(() => {
       setActiveTestimonial((prev) => {
         let next;
-        do { next = Math.floor(Math.random() * testimonialData.length); }
-        while (next === prev && testimonialData.length > 1);
+        do { next = Math.floor(Math.random() * TESTIMONIAL_DATA.length); }
+        while (next === prev && TESTIMONIAL_DATA.length > 1);
         return next;
       });
     }, 8000);
     return () => clearInterval(interval);
   }, []);
-
-  const navigate   = useNavigate();
-  const isLoggedIn = !!localStorage.getItem('token');
-
-  const handleGlobalClick = (e) => {
-    if (!localStorage.getItem('token')) {
-      e.preventDefault();
-      e.stopPropagation();
-      navigate('/login');
-    }
-  };
-
-  const marketItems = ['Stock', 'Cryptocoin', 'Bonds', 'Forex'];
-
-
 
   // ─── Render ─────────────────────────────────────────────────────────────────
 
@@ -363,7 +345,6 @@ const Home = () => {
         <div className="bg-[#212431] border border-gray-700 shadow-xl rounded-2xl mb-5 flex flex-col p-5">
           <div className="flex items-center justify-between mb-1">
             <span className="text-white font-bold text-left">Market</span>
-            {/* Live badge — only for Crypto since it uses WebSocket */}
             {selectedMarket === 'Cryptocoin' && (
               <span className="flex items-center gap-1.5 text-[10px] font-bold text-green-400 bg-green-500/10 border border-green-500/30 px-2 py-0.5 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
@@ -373,7 +354,7 @@ const Home = () => {
           </div>
 
           <div className="flex flex-row mt-2 text-zinc-400">
-            {marketItems.map((item) => (
+            {MARKET_ITEMS.map((item) => (
               <div
                 key={item}
                 onClick={() => setSelectedMarket(item)}
@@ -433,7 +414,7 @@ const Home = () => {
                   </tr>
                 </thead>
                 <tbody className="animate-marquee1 w-full">
-                  {[...withData, ...withData].map((item, index) => (
+                  {[...WITH_DATA, ...WITH_DATA].map((item, index) => (
                     <tr key={index} className="text-left">
                       <td className="py-2.5 px-4 w-[50%] text-left text-sm font-medium text-gray-300 truncate">{maskUsername(item.username)}</td>
                       <td className="py-2.5 px-4 w-[50%] text-right text-sm font-bold text-[#49bace]">₹{item.amount}</td>
@@ -449,7 +430,7 @@ const Home = () => {
         <div className="bg-[#212431] border border-gray-700 shadow-xl rounded-2xl mb-5 flex flex-col p-5 overflow-hidden">
           <span className="text-white font-bold text-left mb-4">Trusted Feedback's</span>
           <div className="relative h-[140px] sm:h-[120px]">
-            {testimonialData.map((t, index) => (
+            {TESTIMONIAL_DATA.map((t, index) => (
               <div
                 key={index}
                 className={`absolute inset-0 w-full transition-all duration-700 transform ${
@@ -477,9 +458,10 @@ const Home = () => {
               </div>
             ))}
           </div>
+
           {/* Pagination Dots */}
           <div className="flex justify-center gap-1.5 mt-4">
-            {testimonialData.map((_, i) => (
+            {TESTIMONIAL_DATA.map((_, i) => (
               <div
                 key={i}
                 className={`w-1.5 h-1.5 rounded-full transition-all ${i === activeTestimonial ? "bg-[#49bace] w-3" : "bg-gray-700"}`}
