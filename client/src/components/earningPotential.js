@@ -1,12 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, Download, TrendingUp, Shield,
-  Award, Zap, Clock, Users, CheckCircle2,
-  IndianRupee, ChevronDown, ChevronUp
+  ChevronLeft, TrendingUp, DollarSign, Clock, Shield,
+  Zap, Target, Award, ArrowUpRight, Calculator,
+  Download, IndianRupee, Users, CheckCircle2, Star
 } from 'lucide-react';
 
-// ─── Data ─────────────────────────────────────────────────────────────────────
+// ─── Compound table data ───────────────────────────────────────────────────────
 const RATE    = 0.06;
 const AMOUNTS = [600, 1000, 2000, 3000, 5000, 10000, 20000, 30000, 50000];
 
@@ -26,302 +26,456 @@ const ALL = {};
 AMOUNTS.forEach(a => { ALL[a] = buildTable(a); });
 
 const fmt  = (n) => n.toLocaleString('en-IN');
-const fmtK = (a) => a >= 1000 ? `₹${a/1000}K` : `₹${a}`;
+const fmtK = (a) => a >= 1000 ? `₹${a / 1000}K` : `₹${a}`;
 
-// ─── PDF download (print-based) ───────────────────────────────────────────────
+// ─── PDF download ─────────────────────────────────────────────────────────────
 const handleDownloadPDF = () => {
   const win = window.open('', '_blank');
   if (!win) return;
-
-  const amountLabel = (a) => a >= 1000 ? `₹${a/1000}K` : `₹${a}`;
-
   const sections = AMOUNTS.map(a => {
     const rows = ALL[a];
-    const bodyRows = rows.map((r, i) => `
-      <tr style="background:${i%2===0?'#0d1e30':'#091524'}">
+    const body = rows.map((r, i) => `
+      <tr style="background:${i % 2 === 0 ? '#0d1e30' : '#091524'}">
         <td style="color:#F5C518;padding:4px 6px;text-align:center;border:1px solid #1a3a5c;">Day ${r.day}</td>
         <td style="color:#fff;padding:4px 6px;text-align:right;border:1px solid #1a3a5c;">${fmt(r.invest)}</td>
         <td style="color:#4CAF50;padding:4px 6px;text-align:right;border:1px solid #1a3a5c;">+${fmt(r.profit)}</td>
-        <td style="color:#00C8E0;padding:4px 6px;text-align:right;border:1px solid #1a3a5c;font-weight:bold;">${fmt(r.total)}</td>
+        <td style="color:#00C8E0;padding:4px 6px;text-align:right;font-weight:bold;border:1px solid #1a3a5c;">${fmt(r.total)}</td>
       </tr>`).join('');
     return `
-      <div style="margin-bottom:30px;break-inside:avoid;">
-        <h3 style="color:#F5C518;margin:0 0 6px;font-size:14px;">Starting Amount: ${amountLabel(a)}</h3>
-        <table style="width:100%;border-collapse:collapse;font-size:11px;font-family:Arial;">
-          <thead>
-            <tr style="background:#0A2744;">
-              <th style="color:#00C8E0;padding:6px;border:1px solid #1a3a5c;text-align:center;">Day</th>
-              <th style="color:#00C8E0;padding:6px;border:1px solid #1a3a5c;text-align:right;">Invest (₹)</th>
-              <th style="color:#00C8E0;padding:6px;border:1px solid #1a3a5c;text-align:right;">Profit (₹)</th>
-              <th style="color:#00C8E0;padding:6px;border:1px solid #1a3a5c;text-align:right;">Total (₹)</th>
-            </tr>
-          </thead>
-          <tbody>${bodyRows}</tbody>
+      <div style="margin-bottom:28px;break-inside:avoid;">
+        <h3 style="color:#F5C518;margin:0 0 6px;font-size:13px;">Starting: ${fmtK(a)}</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:10.5px;font-family:Arial;">
+          <thead><tr style="background:#0A2744;">
+            <th style="color:#00C8E0;padding:5px;border:1px solid #1a3a5c;">Day</th>
+            <th style="color:#00C8E0;padding:5px;text-align:right;border:1px solid #1a3a5c;">Invest (₹)</th>
+            <th style="color:#00C8E0;padding:5px;text-align:right;border:1px solid #1a3a5c;">Profit (₹)</th>
+            <th style="color:#00C8E0;padding:5px;text-align:right;border:1px solid #1a3a5c;">Total (₹)</th>
+          </tr></thead>
+          <tbody>${body}</tbody>
         </table>
       </div>`;
   }).join('');
 
   win.document.write(`<!DOCTYPE html><html><head>
-    <title>TradeMint — Income Chart 1-90 Days</title>
+    <title>TradeMint Income Chart</title>
     <style>
       body{background:#0B1929;color:#fff;font-family:Arial,sans-serif;padding:20px;}
-      h1{color:#00C8E0;text-align:center;font-size:22px;margin:0 0 4px;}
-      h2{color:#F5C518;text-align:center;font-size:13px;font-weight:normal;margin:0 0 20px;}
-      @media print{
-        body{background:#fff;color:#000;}
-        h1{color:#0077aa;}h2{color:#cc8800;}
-        td,th{border-color:#ccc !important;}
-      }
+      h1{color:#00C8E0;text-align:center;font-size:20px;margin:0 0 4px;}
+      h2{color:#F5C518;text-align:center;font-size:12px;font-weight:normal;margin:0 0 20px;}
+      @media print{body{background:#fff;color:#000;}h1{color:#0077aa;}h2{color:#cc8800;}}
     </style>
   </head><body>
     <h1>TradeMint — Cumulative Income Chart</h1>
-    <h2>6% Daily Compound Return · 1 to 90 Days</h2>
+    <h2>6% Daily Compound Return · Day 1 to Day 90</h2>
     ${sections}
-    <p style="color:#557799;text-align:center;font-size:10px;margin-top:20px;">
-      * Returns compounded daily at 6% of Total Revenue. All amounts in ₹ (Indian Rupees).
+    <p style="color:#557799;text-align:center;font-size:9px;margin-top:16px;">
+      * Returns compounded daily at 6% of Total Revenue. All amounts in ₹.
     </p>
     <script>window.onload=()=>{setTimeout(()=>window.print(),400);}<\/script>
   </body></html>`);
   win.document.close();
 };
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Original earning plans ────────────────────────────────────────────────────
+const earningPlans = [
+  {
+    name: 'Starter Plan',
+    dailyReturn: '6%',
+    duration: '30 Days',
+    minDeposit: '₹600',
+    maxDeposit: '₹5,000',
+    color: 'from-[#00C8E0] to-cyan-400',
+    shadow: 'shadow-cyan-500/20',
+    icon: TrendingUp,
+    tag: 'MOST POPULAR',
+  },
+  {
+    name: 'Growth Plan',
+    dailyReturn: '6%',
+    duration: '60 Days',
+    minDeposit: '₹5,001',
+    maxDeposit: '₹20,000',
+    color: 'from-emerald-500 to-green-400',
+    shadow: 'shadow-emerald-500/20',
+    icon: Zap,
+    tag: 'BEST VALUE',
+  },
+  {
+    name: 'Premium Plan',
+    dailyReturn: '6%',
+    duration: '90 Days',
+    minDeposit: '₹20,001',
+    maxDeposit: '₹50,000',
+    color: 'from-purple-500 to-pink-500',
+    shadow: 'shadow-purple-500/20',
+    icon: Award,
+    tag: 'MAX RETURNS',
+  },
+];
+
+const calculateEarnings = (amount, percentage) => {
+  const v = parseFloat(amount);
+  if (!v || isNaN(v)) return '0.00';
+  return (v * percentage / 100).toFixed(2);
+};
+
+// ─── Component ─────────────────────────────────────────────────────────────────
 const EarningPotential = () => {
   const navigate = useNavigate();
-  const [selected, setSelected]     = useState(5000);
-  const [showFull, setShowFull]     = useState(false);
-  const [activePart, setActivePart] = useState(0); // 0=Day1-30, 1=Day31-60, 2=Day61-90
+  const [investmentAmount, setInvestmentAmount] = useState('');
+  const [selectedAmt,      setSelectedAmt]      = useState(5000);
+  const [activePart,       setActivePart]        = useState(0);
 
-  const rows    = useMemo(() => ALL[selected], [selected]);
-  const parts   = [rows.slice(0,30), rows.slice(30,60), rows.slice(60,90)];
+  const rows    = useMemo(() => ALL[selectedAmt], [selectedAmt]);
+  const parts   = [rows.slice(0, 30), rows.slice(30, 60), rows.slice(60, 90)];
   const visible = parts[activePart];
-
-  // Milestone summary
   const d30 = rows[29], d60 = rows[59], d90 = rows[89];
 
   return (
-    <div className='bg-[#0B1929] min-h-screen text-white font-sans pb-24'>
+    <div className='bg-[#101821] min-h-screen text-white pb-24 font-sans'>
 
-      {/* Header */}
-      <div className="sticky top-0 z-50 bg-[#0d2240] px-4 py-4 flex items-center justify-between shadow-xl border-b border-[#1a3a5c]">
+      {/* ── Header ── */}
+      <div className="sticky top-0 z-50 bg-[#312c42] px-4 py-4 flex items-center justify-between shadow-lg">
         <button onClick={() => window.history.back()} className='p-1'>
-          <ChevronLeft size={24} className="text-gray-300" />
+          <ChevronLeft size={24} color="#fff" />
         </button>
-        <div className="text-center">
-          <h1 className="text-base font-black text-white tracking-tight">Income Chart</h1>
-          <p className="text-[9px] text-[#00C8E0] font-semibold uppercase tracking-widest">6% Daily Compound Return</p>
-        </div>
+        <h1 className="text-lg font-bold tracking-tight">Earning Potential</h1>
         <button
           onClick={handleDownloadPDF}
-          className="flex items-center gap-1.5 bg-[#00C8E0]/10 border border-[#00C8E0]/40 text-[#00C8E0] text-[10px] font-black px-3 py-2 rounded-xl hover:bg-[#00C8E0]/20 transition-all uppercase tracking-wider"
+          className="flex items-center gap-1.5 bg-[#49bace]/15 border border-[#49bace]/40 text-[#49bace] text-[10px] font-black px-3 py-2 rounded-xl hover:bg-[#49bace]/25 transition-all"
         >
           <Download size={13} />
           PDF
         </button>
       </div>
 
-      {/* Hero Banner */}
-      <div className="bg-gradient-to-br from-[#0a2040] via-[#0d2850] to-[#0a1e3a] px-5 pt-6 pb-8 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-[#00C8E0]/6 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 left-0 w-52 h-52 bg-emerald-500/6 rounded-full blur-[80px]" />
+      {/* ── Hero ── */}
+      <div className="bg-gradient-to-br from-[#0d2040] via-[#0f2850] to-[#0d1e3a] pt-8 pb-16 px-6 rounded-b-[3rem] relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[#49bace]/10 rounded-full blur-[80px]" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-emerald-500/10 rounded-full blur-[60px]" />
 
-        {/* Title like image */}
-        <div className="relative z-10 text-center mb-5">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[#00C8E0] mb-1">TradeMint</p>
-          <h2 className="text-xl font-black text-white leading-tight">
-            Cumulative Total Income of<br />
-            <span className="text-[#F5C518]">User Quantitative Trading</span>
-          </h2>
-          <p className="text-xs text-gray-400 mt-1">From Day 1 to Day 90 · 6% Daily Compound</p>
-        </div>
-
-        {/* 3 milestone cards */}
-        <div className="grid grid-cols-3 gap-2 relative z-10">
-          {[
-            { label: 'Day 30', invest: d30.invest, profit: d30.profit, total: d30.total, color: '#00C8E0' },
-            { label: 'Day 60', invest: d60.invest, profit: d60.profit, total: d60.total, color: '#4CAF50' },
-            { label: 'Day 90', invest: d90.invest, profit: d90.profit, total: d90.total, color: '#F5C518' },
-          ].map((m, i) => (
-            <div key={i} className="bg-white/5 border border-white/10 rounded-2xl p-3 text-center">
-              <p className="text-[9px] text-gray-400 font-bold uppercase mb-1">{m.label}</p>
-              <p className="text-xs font-black" style={{ color: m.color }}>₹{fmt(m.total)}</p>
-              <p className="text-[8px] text-emerald-400 mt-0.5">+₹{fmt(m.profit)}/day</p>
+        <div className="relative z-10">
+          <div className="flex items-center space-x-3 mb-4">
+            <div className="p-3 bg-white/10 backdrop-blur-sm rounded-2xl">
+              <TrendingUp size={28} className="text-[#49bace]" />
             </div>
-          ))}
-        </div>
-
-        {/* Trust badges */}
-        <div className="flex justify-center gap-4 mt-4 relative z-10">
-          {[
-            { icon: Shield,  label: 'Secure'      },
-            { icon: Users,   label: '50K+ Users'  },
-            { icon: Award,   label: '99.9% Uptime'},
-          ].map((b, i) => (
-            <div key={i} className="flex items-center gap-1.5">
-              <b.icon size={11} className="text-[#00C8E0]" />
-              <span className="text-[9px] text-gray-400 font-bold">{b.label}</span>
+            <div>
+              <h2 className="text-2xl font-black text-white">Maximize Your Earnings</h2>
+              <p className="text-blue-100/70 text-xs mt-1">6% daily compound on Total Revenue</p>
             </div>
-          ))}
+          </div>
+
+          {/* Trust badges row */}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {[
+              { icon: Users,   label: '50K+ Users'   },
+              { icon: Shield,  label: '100% Secure'  },
+              { icon: Star,    label: '99.9% Uptime' },
+            ].map((b, i) => (
+              <div key={i} className="flex items-center gap-1.5 bg-white/10 border border-white/15 px-3 py-1.5 rounded-full">
+                <b.icon size={11} className="text-[#49bace]" />
+                <span className="text-[10px] text-white/80 font-bold">{b.label}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            {[
+              { label: 'Daily Return', value: '6%',     icon: ArrowUpRight, color: 'text-emerald-400' },
+              { label: 'Compounded',   value: 'Daily',   icon: Clock,        color: 'text-[#49bace]'  },
+              { label: 'Secure',       value: '100%',    icon: Shield,       color: 'text-purple-400' },
+            ].map((s, i) => (
+              <div key={i} className="bg-white/5 backdrop-blur-sm p-3 rounded-2xl border border-white/10 text-center">
+                <s.icon size={15} className={`${s.color} mx-auto mb-1`} />
+                <div className={`text-xl font-black ${s.color}`}>{s.value}</div>
+                <div className="text-[9px] text-gray-400 uppercase font-bold">{s.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="px-4 mt-4 space-y-4">
+      <div className="px-4 mt-6 space-y-6">
 
-        {/* Amount Selector */}
-        <div className="bg-[#0f2236] border border-[#1a3a5c] rounded-[2rem] p-4 shadow-xl">
-          <div className="flex items-center gap-2 mb-3">
-            <IndianRupee size={14} className="text-[#00C8E0]" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Select Starting Amount</span>
+        {/* ── Calculator ── */}
+        <div className="bg-[#212431] border border-gray-700 rounded-[2rem] p-6 shadow-xl">
+          <div className="flex items-center space-x-3 mb-5">
+            <div className="p-2.5 bg-[#49bace]/10 rounded-xl">
+              <Calculator size={22} className="text-[#49bace]" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Earnings Calculator</h3>
+              <p className="text-[10px] text-gray-500">See your daily return instantly</p>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+
+          <div>
+            <label className="text-[11px] text-gray-400 uppercase font-bold tracking-wider mb-2 block">
+              Enter Investment Amount
+            </label>
+            <div className="relative">
+              <DollarSign size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+              <input
+                type="number"
+                value={investmentAmount}
+                onChange={(e) => setInvestmentAmount(e.target.value)}
+                placeholder="₹ 10,000"
+                className="w-full bg-[#101821] border border-gray-800 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-gray-600 focus:border-[#49bace] focus:ring-2 focus:ring-[#49bace]/20 transition-all outline-none"
+              />
+            </div>
+          </div>
+
+          {investmentAmount && (
+            <div className="grid grid-cols-3 gap-3 pt-4">
+              {earningPlans.map((plan, index) => (
+                <div key={index} className={`bg-gradient-to-br ${plan.color} p-4 rounded-2xl relative overflow-hidden`}>
+                  <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-[20px]" />
+                  <span className="text-[9px] text-white/80 uppercase font-bold block mb-1">{plan.name}</span>
+                  <span className="text-lg font-black text-white block">
+                    ₹{calculateEarnings(investmentAmount, 6)}
+                  </span>
+                  <span className="text-[8px] text-white/70">per day</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Earning Plans (original UI) ── */}
+        <div className="space-y-4">
+          <div className="flex items-center space-x-2 mb-1 px-2">
+            <Target size={18} className="text-[#49bace]" />
+            <h3 className="text-sm font-black text-white uppercase tracking-widest">Quantification Plans</h3>
+          </div>
+
+          {earningPlans.map((plan, index) => (
+            <div
+              key={index}
+              className={`bg-[#212431] border border-gray-700 rounded-[2rem] p-6 shadow-xl relative overflow-hidden hover:border-gray-600 transition-all ${plan.shadow}`}
+            >
+              {/* Top gradient bar */}
+              <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${plan.color}`} />
+
+              {/* Tag */}
+              <div className={`absolute top-4 right-4 bg-gradient-to-r ${plan.color} px-2 py-0.5 rounded-full`}>
+                <span className="text-[8px] font-black text-white">{plan.tag}</span>
+              </div>
+
+              <div className="flex justify-between items-start mb-5">
+                <div className="flex items-center space-x-3">
+                  <div className={`p-3 bg-gradient-to-br ${plan.color} rounded-2xl shadow-lg`}>
+                    <plan.icon size={22} className="text-white" />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-white">{plan.name}</h4>
+                    <p className="text-[10px] text-gray-500 mt-0.5">{plan.duration} · Compound</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-[#49bace]">
+                    {plan.dailyReturn}
+                  </div>
+                  <span className="text-[9px] text-gray-500 uppercase font-bold">Daily Return</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="bg-[#101821] rounded-xl p-3 border border-gray-800">
+                  <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Min Deposit</span>
+                  <span className="text-sm font-bold text-white">{plan.minDeposit}</span>
+                </div>
+                <div className="bg-[#101821] rounded-xl p-3 border border-gray-800">
+                  <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Max Deposit</span>
+                  <span className="text-sm font-bold text-white">{plan.maxDeposit}</span>
+                </div>
+              </div>
+
+              {/* What you earn in 30 days */}
+              <div className="bg-[#101821]/60 rounded-xl p-3 border border-gray-800/60 mb-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9px] text-gray-500 uppercase font-bold">
+                    Estimated after {plan.duration}
+                  </span>
+                  <span className="text-sm font-black text-emerald-400">
+                    ₹{fmt(ALL[parseInt(plan.minDeposit.replace(/[^0-9]/g,''))][
+                        parseInt(plan.duration) - 1
+                      ]?.total || 0)}+
+                  </span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => navigate('/quantify')}
+                className={`w-full py-4 bg-gradient-to-r ${plan.color} text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all`}
+              >
+                Start Quantifying Now
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Income Chart Table ── */}
+        <div>
+          <div className="flex items-center justify-between mb-3 px-1">
+            <div className="flex items-center gap-2">
+              <TrendingUp size={16} className="text-[#49bace]" />
+              <h3 className="text-sm font-black text-white uppercase tracking-widest">Income Chart</h3>
+            </div>
+            <span className="text-[9px] text-gray-500 font-bold">90-Day Compound Table</span>
+          </div>
+
+          {/* Amount pills */}
+          <div className="flex flex-wrap gap-2 mb-4">
             {AMOUNTS.map(a => (
               <button
                 key={a}
-                onClick={() => { setSelected(a); setActivePart(0); }}
+                onClick={() => { setSelectedAmt(a); setActivePart(0); }}
                 className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                  selected === a
-                    ? 'bg-[#00C8E0] text-[#0B1929]'
-                    : 'bg-[#0B1929] border border-[#1a3a5c] text-gray-400 hover:border-[#00C8E0]/50'
+                  selectedAmt === a
+                    ? 'bg-[#49bace] text-[#101821]'
+                    : 'bg-[#212431] border border-gray-700 text-gray-400 hover:border-[#49bace]/50'
                 }`}
               >
                 {fmtK(a)}
               </button>
             ))}
           </div>
-        </div>
 
-        {/* THE MAIN TABLE — matching image style */}
-        <div className="bg-[#0f2236] border border-[#1a3a5c] rounded-[2rem] shadow-2xl overflow-hidden">
-
-          {/* Table title */}
-          <div className="bg-[#0A2744] px-5 py-3 text-center border-b border-[#1a3a5c]">
-            <p className="text-sm font-black text-[#00C8E0]">
-              Starting Amount: <span className="text-[#F5C518]">{fmtK(selected)}</span>
-            </p>
-            <p className="text-[9px] text-gray-500 mt-0.5">Cumulative · Invest Funds · Profits · Total Profit</p>
+          {/* Milestone summary */}
+          <div className="grid grid-cols-3 gap-3 mb-4">
+            {[
+              { label: '30 Days', val: fmt(d30.total), daily: fmt(d30.profit), color: 'text-[#49bace]' },
+              { label: '60 Days', val: fmt(d60.total), daily: fmt(d60.profit), color: 'text-emerald-400' },
+              { label: '90 Days', val: fmt(d90.total), daily: fmt(d90.profit), color: 'text-amber-400'  },
+            ].map((m, i) => (
+              <div key={i} className="bg-[#212431] border border-gray-700 rounded-2xl p-3 text-center shadow-xl">
+                <p className="text-[9px] text-gray-500 font-bold uppercase mb-1">After {m.label}</p>
+                <p className={`text-sm font-black ${m.color}`}>₹{m.val}</p>
+                <p className="text-[8px] text-emerald-400 mt-0.5">+₹{m.daily}/day</p>
+              </div>
+            ))}
           </div>
 
-          {/* Day range tabs */}
-          <div className="grid grid-cols-3 border-b border-[#1a3a5c]">
-            {['Day 1–30', 'Day 31–60', 'Day 61–90'].map((label, i) => (
+          {/* Main table */}
+          <div className="bg-[#212431] border border-gray-700 rounded-[2rem] shadow-xl overflow-hidden">
+            {/* Table header */}
+            <div className="bg-[#0A2744] border-b border-[#49bace]/30 px-4 py-3 text-center">
+              <p className="text-xs font-black text-[#49bace]">
+                Starting: <span className="text-[#F5C518]">{fmtK(selectedAmt)}</span>
+                <span className="text-gray-500 font-normal ml-2">· 6% Daily Compound</span>
+              </p>
+            </div>
+
+            {/* Day range tabs */}
+            <div className="grid grid-cols-3 border-b border-gray-700">
+              {['Day 1–30', 'Day 31–60', 'Day 61–90'].map((label, i) => (
+                <button
+                  key={i}
+                  onClick={() => setActivePart(i)}
+                  className={`py-3 text-[10px] font-black uppercase tracking-wider transition-all ${
+                    activePart === i
+                      ? 'bg-[#0A2744] text-[#49bace] border-b-2 border-[#49bace]'
+                      : 'text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Col headers */}
+            <div className="grid grid-cols-4 bg-[#182030] px-4 py-2.5">
+              {['Day', 'Invest', 'Profit', 'Total'].map((h, i) => (
+                <div key={i} className={`text-[9px] font-black uppercase tracking-wider text-[#49bace] ${i > 0 ? 'text-right' : ''}`}>
+                  {h}
+                </div>
+              ))}
+            </div>
+
+            {/* Rows */}
+            <div>
+              {visible.map((row, i) => (
+                <div
+                  key={row.day}
+                  className={`grid grid-cols-4 px-4 py-2.5 border-b border-gray-800/40 ${
+                    i % 2 === 0 ? 'bg-[#141e2d]' : 'bg-[#101828]'
+                  }`}
+                >
+                  <div className="text-xs font-bold text-amber-400">Day {row.day}</div>
+                  <div className="text-xs text-gray-300 text-right font-mono">{fmt(row.invest)}</div>
+                  <div className="text-xs text-emerald-400 text-right font-bold font-mono">+{fmt(row.profit)}</div>
+                  <div className="text-xs text-[#49bace] text-right font-black font-mono">{fmt(row.total)}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Prev / Next */}
+            <div className="flex justify-between items-center px-5 py-3 border-t border-gray-700 bg-[#182030]">
               <button
-                key={i}
-                onClick={() => setActivePart(i)}
-                className={`py-2.5 text-[10px] font-black uppercase tracking-wider transition-all ${
-                  activePart === i
-                    ? 'bg-[#0A2744] text-[#00C8E0] border-b-2 border-[#00C8E0]'
-                    : 'text-gray-500 hover:text-gray-300'
-                }`}
+                disabled={activePart === 0}
+                onClick={() => setActivePart(p => p - 1)}
+                className="text-[10px] text-[#49bace] font-bold disabled:opacity-30"
               >
-                {label}
+                ← Prev 30
               </button>
-            ))}
-          </div>
-
-          {/* Column headers */}
-          <div className="grid grid-cols-4 bg-[#0d2850] px-4 py-2.5">
-            <div className="text-[9px] font-black text-[#00C8E0] uppercase tracking-wider">Cumul. Days</div>
-            <div className="text-[9px] font-black text-[#00C8E0] uppercase tracking-wider text-right">Invest Funds</div>
-            <div className="text-[9px] font-black text-[#00C8E0] uppercase tracking-wider text-right">Profits</div>
-            <div className="text-[9px] font-black text-[#00C8E0] uppercase tracking-wider text-right">Total Profit</div>
-          </div>
-
-          {/* Table rows */}
-          <div>
-            {visible.map((row, i) => (
-              <div
-                key={row.day}
-                className={`grid grid-cols-4 px-4 py-2.5 border-b border-[#1a3a5c]/40 ${
-                  i % 2 === 0 ? 'bg-[#0d1e30]' : 'bg-[#091524]'
-                }`}
+              <span className="text-[9px] text-gray-600">{activePart * 30 + 1}–{Math.min(activePart * 30 + 30, 90)} of 90</span>
+              <button
+                disabled={activePart === 2}
+                onClick={() => setActivePart(p => p + 1)}
+                className="text-[10px] text-[#49bace] font-bold disabled:opacity-30"
               >
-                <div className="text-xs font-bold text-[#F5C518]">Day {row.day}</div>
-                <div className="text-xs text-white text-right font-mono">{fmt(row.invest)}</div>
-                <div className="text-xs text-emerald-400 text-right font-bold font-mono">+{fmt(row.profit)}</div>
-                <div className="text-xs text-[#00C8E0] text-right font-black font-mono">{fmt(row.total)}</div>
-              </div>
-            ))}
-          </div>
-
-          {/* Navigation hint */}
-          <div className="flex justify-between items-center px-5 py-3 border-t border-[#1a3a5c] bg-[#0A2744]">
-            <button
-              disabled={activePart === 0}
-              onClick={() => setActivePart(p => p - 1)}
-              className="text-[10px] text-[#00C8E0] font-bold disabled:opacity-30 flex items-center gap-1"
-            >
-              ← Previous 30 days
-            </button>
-            <span className="text-[9px] text-gray-600">
-              {activePart*30+1}–{Math.min(activePart*30+30, 90)} of 90
-            </span>
-            <button
-              disabled={activePart === 2}
-              onClick={() => setActivePart(p => p + 1)}
-              className="text-[10px] text-[#00C8E0] font-bold disabled:opacity-30 flex items-center gap-1"
-            >
-              Next 30 days →
-            </button>
+                Next 30 →
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* All 9 amounts summary */}
-        <div className="bg-[#0f2236] border border-[#1a3a5c] rounded-[2rem] p-4 shadow-xl">
+        {/* ── All amounts summary ── */}
+        <div className="bg-[#212431] border border-gray-700 rounded-[2rem] p-5 shadow-xl">
           <div className="flex items-center gap-2 mb-3">
-            <TrendingUp size={14} className="text-[#00C8E0]" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">90-Day Summary — All Amounts</span>
+            <Award size={15} className="text-[#49bace]" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">90-Day Snapshot — All Amounts</span>
           </div>
-
-          {/* Header */}
-          <div className="grid grid-cols-4 bg-[#0A2744] rounded-xl px-3 py-2 mb-1">
-            {['Amount', 'Day 30', 'Day 60', 'Day 90'].map((h, i) => (
-              <div key={i} className={`text-[9px] font-black text-[#00C8E0] uppercase ${i > 0 ? 'text-right' : ''}`}>{h}</div>
+          <div className="grid grid-cols-4 bg-[#101821] rounded-xl px-3 py-2 mb-1">
+            {['Start', '30D', '60D', '90D'].map((h, i) => (
+              <div key={i} className={`text-[9px] font-black text-[#49bace] uppercase ${i > 0 ? 'text-right' : ''}`}>{h}</div>
             ))}
           </div>
-
-          {/* Summary rows */}
-          {AMOUNTS.map((a, i) => {
-            const t = ALL[a];
-            return (
-              <div
-                key={a}
-                onClick={() => setSelected(a)}
-                className={`grid grid-cols-4 px-3 py-2 rounded-xl cursor-pointer transition-all mb-0.5 ${
-                  selected === a
-                    ? 'bg-[#00C8E0]/10 border border-[#00C8E0]/30'
-                    : 'hover:bg-white/5'
-                }`}
-              >
-                <div className={`text-xs font-black ${selected === a ? 'text-[#00C8E0]' : 'text-[#F5C518]'}`}>{fmtK(a)}</div>
-                <div className="text-[10px] text-gray-300 text-right font-mono">₹{fmt(t[29].total)}</div>
-                <div className="text-[10px] text-gray-300 text-right font-mono">₹{fmt(t[59].total)}</div>
-                <div className="text-[10px] text-emerald-400 text-right font-bold font-mono">₹{fmt(t[89].total)}</div>
-              </div>
-            );
-          })}
+          {AMOUNTS.map((a) => (
+            <div
+              key={a}
+              onClick={() => { setSelectedAmt(a); setActivePart(0); }}
+              className={`grid grid-cols-4 px-3 py-2 rounded-xl cursor-pointer transition-all mb-0.5 ${
+                selectedAmt === a
+                  ? 'bg-[#49bace]/10 border border-[#49bace]/30'
+                  : 'hover:bg-white/5'
+              }`}
+            >
+              <div className={`text-xs font-black ${selectedAmt === a ? 'text-[#49bace]' : 'text-amber-400'}`}>{fmtK(a)}</div>
+              <div className="text-[10px] text-gray-300 text-right font-mono">₹{fmt(ALL[a][29].total)}</div>
+              <div className="text-[10px] text-gray-300 text-right font-mono">₹{fmt(ALL[a][59].total)}</div>
+              <div className="text-[10px] text-emerald-400 text-right font-bold font-mono">₹{fmt(ALL[a][89].total)}</div>
+            </div>
+          ))}
         </div>
 
-        {/* Why trust us */}
-        <div className="bg-[#0f2236] border border-[#1a3a5c] rounded-[2rem] p-5 shadow-xl">
-          <div className="flex items-center gap-2 mb-4">
-            <Shield size={14} className="text-[#00C8E0]" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-gray-400">Why Trust TradeMint</span>
-          </div>
+        {/* ── Why Trust ── */}
+        <div className="bg-[#212431] border border-gray-700 rounded-[2rem] p-6 shadow-xl">
+          <h3 className="text-sm font-black text-white uppercase tracking-widest mb-5 px-1">Why Choose TradeMint</h3>
           <div className="space-y-0">
             {[
-              { icon: Shield,       color: 'text-purple-400', title: 'Bank-Level Security',       desc: 'SSL encryption, JWT auth & bcrypt password protection on all accounts' },
-              { icon: TrendingUp,   color: 'text-[#00C8E0]',  title: '6% Daily Compounded',       desc: 'Earnings auto-calculate on Total Revenue — not just the initial deposit' },
-              { icon: Clock,        color: 'text-amber-400',  title: 'Instant to 30-min Withdrawal',desc: 'Quick processing with 4% handling fee — no hidden charges' },
-              { icon: Users,        color: 'text-emerald-400',title: '50,000+ Active Users',       desc: 'Trusted traders across India with ₹2.5M+ daily trading volume' },
-              { icon: CheckCircle2, color: 'text-green-400',  title: 'Transparent Returns',        desc: 'Every rupee tracked — deposit, earn, withdraw anytime after KYC' },
-              { icon: Zap,          color: 'text-yellow-400', title: 'Automated System',           desc: 'Start once — earnings compound automatically every midnight reset' },
+              { icon: Shield,       color: 'text-purple-400', title: 'Bank-Level Security',     desc: '100% secure with SSL encryption, JWT auth & bcrypt password hashing' },
+              { icon: Clock,        color: 'text-[#49bace]',  title: 'Fast Withdrawals',        desc: 'Requests processed within 10–30 minutes after approval' },
+              { icon: Zap,          color: 'text-yellow-400', title: 'Automated System',        desc: 'Set it once — earnings compound automatically every midnight' },
+              { icon: Users,        color: 'text-emerald-400',title: '50,000+ Happy Users',     desc: 'Trusted by traders across India with ₹2.5M+ daily volume' },
+              { icon: CheckCircle2, color: 'text-green-400',  title: 'Transparent Returns',     desc: 'Every rupee tracked — no hidden fees except 4% withdrawal handling' },
             ].map((f, i, arr) => (
-              <div key={i} className={`flex items-start gap-3 py-3 ${i < arr.length-1 ? 'border-b border-[#1a3a5c]/50' : ''}`}>
-                <div className={`p-2 bg-[#0B1929] rounded-xl border border-[#1a3a5c] flex-shrink-0 ${f.color}`}>
-                  <f.icon size={14} />
+              <div key={i} className={`flex items-start space-x-3 py-3 ${i < arr.length - 1 ? 'border-b border-gray-800' : ''}`}>
+                <div className={`p-2.5 bg-[#101821] rounded-xl flex-shrink-0 border border-gray-800 ${f.color}`}>
+                  <f.icon size={18} />
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-white mb-0.5">{f.title}</p>
+                  <h4 className="text-sm font-bold text-white mb-0.5">{f.title}</h4>
                   <p className="text-[10px] text-gray-500 leading-relaxed">{f.desc}</p>
                 </div>
               </div>
@@ -329,27 +483,26 @@ const EarningPotential = () => {
           </div>
         </div>
 
-        {/* Download PDF */}
+        {/* ── Download PDF ── */}
         <button
           onClick={handleDownloadPDF}
-          className="w-full py-4 bg-[#0f2236] border border-[#00C8E0]/40 text-[#00C8E0] rounded-[2rem] font-black text-sm flex items-center justify-center gap-2 hover:bg-[#00C8E0]/10 transition-all"
+          className="w-full py-4 bg-[#212431] border border-[#49bace]/30 text-[#49bace] rounded-[2rem] font-bold text-sm flex items-center justify-center gap-2 hover:bg-[#49bace]/10 transition-all"
         >
           <Download size={18} />
           Download Full Income Chart (PDF)
         </button>
 
-        {/* CTA */}
+        {/* ── CTA ── */}
         <button
-          onClick={() => navigate('/quantify')}
-          className="w-full py-5 bg-gradient-to-r from-[#00C8E0] to-emerald-500 text-[#0B1929] rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-2xl shadow-[#00C8E0]/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+          onClick={() => navigate('/deposite')}
+          className="w-full py-5 bg-gradient-to-r from-emerald-500 to-[#49bace] text-white rounded-[2.5rem] font-black text-sm uppercase tracking-widest shadow-2xl shadow-emerald-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
         >
           Start Earning Today →
         </button>
 
-        <p className="text-[9px] text-gray-600 text-center pb-4">
-          * Returns are compounded at 6% daily on Total Revenue. Min deposit ₹600 to start quantifying.
+        <p className="text-[9px] text-gray-600 text-center pb-2">
+          * 6% compounded daily on Total Revenue. Min ₹600 to start quantifying.
         </p>
-
       </div>
     </div>
   );
