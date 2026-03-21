@@ -66,11 +66,11 @@ router.post('/submit', upload.single('paymentScreenshot'), authenticateToken, as
     // console.log('\n=== Deposit Submission Started ===');
     // console.log('User ID:', req.user?.id);
     // console.log('Request body:', req.body);
-    console.log('Uploaded file:', req.file ? {
-      filename: req.file.filename,
-      size: req.file.size,
-      mimetype: req.file.mimetype
-    } : 'No file uploaded');
+    // console.log('Uploaded file:', req.file ? {
+    //   filename: req.file.filename,
+    //   size: req.file.size,
+    //   mimetype: req.file.mimetype
+    // } : 'No file uploaded');
     
     const { amount, utrNumber } = req.body;
 
@@ -183,12 +183,12 @@ router.post('/submit', upload.single('paymentScreenshot'), authenticateToken, as
       deposit: newDeposit 
     });
   } catch (error) {
-    console.error('Error submitting deposit:', error);
-    console.error('Error details:', {
-      message: error.message,
-      code: error.code,
-      errors: error.errors
-    });
+    // console.error('Error submitting deposit:', error);
+    // console.error('Error details:', {
+    //   message: error.message,
+    //   code: error.code,
+    //   errors: error.errors
+    // });
     
     // Delete uploaded file if error occurs
     if (req.file && req.file.path) {
@@ -196,7 +196,7 @@ router.post('/submit', upload.single('paymentScreenshot'), authenticateToken, as
         fs.unlinkSync(req.file.path);
         // console.log('Deleted uploaded file due to error');
       } catch (deleteErr) {
-        console.error('Error deleting file:', deleteErr);
+        // console.error('Error deleting file:', deleteErr);
       }
     }
     
@@ -228,7 +228,7 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
 
     res.json(deposits);
   } catch (error) {
-    console.error('Error fetching deposits:', error);
+    // console.error('Error fetching deposits:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -246,7 +246,7 @@ router.get('/', authenticateToken, async (req, res) => {
 
     res.json(deposits);
   } catch (error) {
-    console.error('Error fetching deposits:', error);
+    // console.error('Error fetching deposits:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -412,14 +412,14 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
           // console.log('ℹ️ No pending referral found for user:', deposit.userId);
         }
       } catch (referralError) {
-        console.error('Error processing referral reward:', referralError);
+        // console.error('Error processing referral reward:', referralError);
       }
       try {
         // This is a local call, so we'll directly call the logic instead of making an HTTP request
         const token = jwt.sign({ id: deposit.userId }, process.env.JWT_SECRET);
         // We already handled the recalculation above, so no need to duplicate
       } catch (recalcError) {
-        console.error('Error in deposit recalculation:', recalcError);
+        // console.error('Error in deposit recalculation:', recalcError);
       }
     }
 
@@ -428,7 +428,7 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
       deposit 
     });
   } catch (error) {
-    console.error('Error updating deposit status:', error);
+    // console.error('Error updating deposit status:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -445,7 +445,7 @@ router.get('/screenshot/:filename', (req, res) => {
       res.status(404).json({ message: 'Screenshot not found' });
     }
   } catch (err) {
-    console.error('Error serving screenshot:', err);
+    // console.error('Error serving screenshot:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -467,7 +467,7 @@ router.get('/all', authenticateToken, async (req, res) => {
     const deposits = await Deposit.find().sort({ timestamp: -1 }).populate('userId', 'name phone email');
     res.json(deposits);
   } catch (error) {
-    console.error('Error fetching all deposits:', error);
+    // console.error('Error fetching all deposits:', error);
     res.status(500).json({ error: 'Failed to fetch deposits' });
   }
 });
