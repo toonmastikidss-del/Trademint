@@ -341,20 +341,34 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
         // Find if this user was referred by someone
         const referral = await Referral.findOne({ 
           refereeId: deposit.userId,
-          status: 'pending' 
+          status: 'pending',
+          rewardGiven: false   // ← only process unrewarded ones
         }).populate('referrerId');
 
         if (referral && referral.referrerId) {
+          const REFERRAL_REWARD = 100; // ₹100 per referral
+
+          // ✅ FIX 1: Mark referral as completed
+          referral.status = 'completed';
+          // ✅ FIX 2: Set rewardGiven = true
+          referral.rewardGiven = true;
+          // ✅ FIX 3: Set correct rewardAmount (was 0 by default)
+          referral.rewardAmount = REFERRAL_REWARD;
+          referral.completedAt = new Date();
+          await referral.save();
+
           // Add referral reward to referrer's balance
           const referrer = referral.referrerId;
           const oldBalance = referrer.balance;
-          referrer.balance += referral.rewardAmount;
+          referrer.balance += REFERRAL_REWARD;
           
-          console.log('📊 Referral Reward Added:');
+          console.log('🎉 Referral Completed & Reward Given:');
           console.log('   Referrer:', referrer._id);
           console.log('   Old Balance:', oldBalance);
+          console.log('   Reward: ₹', REFERRAL_REWARD);
           console.log('   New Balance:', referrer.balance);
-          console.log('   Referral Reward Amount:', referral.rewardAmount);
+          console.log('   rewardGiven:', referral.rewardGiven);
+          console.log('   referral.status:', referral.status);
           
           // Update referrer's quantify field immediately with new balance
           referrer.quantify = referrer.balance;
@@ -394,6 +408,8 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
             
             await referrerQuantifyData.save();
           }
+        } else {
+          console.log('ℹ️ No pending referral found for user:', deposit.userId);
         }
       } catch (referralError) {
         console.error('Error processing referral reward:', referralError);

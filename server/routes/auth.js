@@ -100,7 +100,7 @@ router.get('/user', authenticateToken, async (req, res) => {
 // REGISTER
 router.post('/register', async (req, res) => {
     try {
-        console.log('📝 Registration attempt:', req.body);
+        // console.log('📝 Registration attempt:', req.body);
         
         const { phone, email, password, referralCode } = req.body;
 
@@ -109,11 +109,11 @@ router.post('/register', async (req, res) => {
         let user = await User.findOne(query);
 
         if (user) {
-            console.log('❌ User already exists:', query);
+            // console.log('❌ User already exists:', query);
             return res.status(400).json({ message: 'User already exists' });
         }
 
-        console.log('✅ User does not exist, creating new user...');
+        // console.log('✅ User does not exist, creating new user...');
 
         // Generate unique name
         let uniqueName = '';
