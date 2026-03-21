@@ -65,19 +65,19 @@ router.post('/request', authenticateToken, async (req, res) => {
       });
     }
     
-    // Check if user has sufficient balance with KYC and day-based restrictions
-    const token = req.headers.authorization?.split(' ')[1];
-    
-    // Fetch KYC status
+    // ── FIX: Removed hardcoded localhost:5000 fetch calls ─────────────────
+    // Old code used fetch('http://localhost:5000/api/kyc/status') which
+    // breaks on Railway/Render production servers.
+    // Using direct DB queries instead — faster + works on all environments.
+
+    // Fetch KYC status directly from DB
     let kycApproved = false;
     try {
-      const kycRes = await fetch('http://localhost:5000/api/kyc/status', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const kycData = await kycRes.json();
-      kycApproved = kycData.status === 'Approved';
+      const KYC = require('../models/KYC');
+      const kycRecord = await KYC.findOne({ userId: user._id });
+      kycApproved = kycRecord?.status === 'Approved';
     } catch (kycErr) {
-      console.error('Error fetching KYC status:', kycErr);
+      console.error('Error fetching KYC status from DB:', kycErr);
       kycApproved = false;
     }
     
@@ -86,14 +86,18 @@ router.post('/request', authenticateToken, async (req, res) => {
     const currentDate = new Date();
     const daysSinceRegistration = Math.floor((currentDate - userJoinDate) / (1000 * 60 * 60 * 24));
     
-    // Fetch deposit history to calculate approved deposit amount
-    const depositRes = await fetch(`http://localhost:5000/api/deposit/user/${user._id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    const deposits = await depositRes.json();
-    const approvedAmount = deposits
-      .filter(deposit => deposit.status === 'approved')
-      .reduce((sum, deposit) => sum + deposit.amount, 0);
+    // ── FIX: Fetch deposits directly from DB ─────────────────────────────
+    // Old: fetch(`http://localhost:5000/api/deposit/user/${user._id}`)
+    // New: direct Mongoose query
+    let approvedAmount = 0;
+    try {
+      const Deposit = require('../models/Deposit');
+      const deposits = await Deposit.find({ userId: user._id, status: 'approved' });
+      approvedAmount = deposits.reduce((sum, d) => sum + d.amount, 0);
+    } catch (depErr) {
+      console.error('Error fetching deposits from DB:', depErr);
+      approvedAmount = 0;
+    }
     
     // Calculate balances
     const availableBalance = user.balance;

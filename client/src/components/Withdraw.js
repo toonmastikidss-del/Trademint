@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import { checkBalanceChange, forceRefreshUserData } from '../utils/balanceDetection'
@@ -45,7 +45,11 @@ const Withdraw = () => {
   
   // 24-hour restriction states
   const [hasCompleted24Hours, setHasCompleted24Hours] = useState(false)
-  const [countdown, setCountdown] = useState({ hoursRemaining: 0, secondsRemaining: 0 })
+  // ── FIX 1: Store secondsRemaining in a ref for local countdown ───────────
+  // Old code called check24HourRestriction() every 1 SECOND = 60 API/min!
+  // New: fetch once from server → tick down locally → 0 extra API calls
+  const secondsRemainingRef = useRef(0);
+  const [displayCountdown, setDisplayCountdown] = useState('00:00:00');
   const [loadingRestriction, setLoadingRestriction] = useState(true)
   
   // Alert modal states
@@ -59,9 +63,22 @@ const Withdraw = () => {
   
   // Balance change detection (like Quantify page)
   const [lastBalance, setLastBalance] = useState(0);
+
+  // ── FIX 2: Auto-logout helper ─────────────────────────────────────────────
+  const handleAuthError = (status) => {
+    if (status === 401 || status === 403) {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      navigate('/login');
+    }
+  };
   
   // Detect balance changes from deposits/withdrawals
   useEffect(() => {
+    // ── FIX 2: Token null check ───────────────────────────────────────────
+    const token = localStorage.getItem('token');
+    if (!token) { navigate('/login'); return; }
+
     const detectBalanceChange = async () => {
       const result = await checkBalanceChange();
       
@@ -135,11 +152,12 @@ const Withdraw = () => {
     });
   };
   
-  // Check 24-hour restriction
+  // Check 24-hour restriction — called ONCE, then local countdown ticks
   const check24HourRestriction = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      // ── FIX 2: Token null check ──────────────────────────────────────────
+      if (!token) { navigate('/login'); return; }
       
       const response = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/check-24hrs`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -148,10 +166,13 @@ const Withdraw = () => {
       const { hasCompleted24Hours, hoursRemaining, secondsRemaining } = response.data;
       
       setHasCompleted24Hours(hasCompleted24Hours);
-      setCountdown({ hoursRemaining, secondsRemaining });
+      // ── FIX 1: Store in ref so local countdown can use it ────────────────
+      secondsRemainingRef.current = Math.max(0, Math.floor(secondsRemaining || 0));
       setLoadingRestriction(false);
     } catch (error) {
       console.error('Error checking restriction:', error);
+      // ── FIX 2: Auto-logout on 403 ────────────────────────────────────────
+      handleAuthError(error.response?.status);
       setLoadingRestriction(false);
     }
   };
@@ -176,7 +197,8 @@ const Withdraw = () => {
   const fetchUserBanks = async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      // ── FIX 2: Token null check ──────────────────────────────────────────
+      if (!token) { navigate('/login'); return; }
       
       const response = await axios.get(`${API_CONFIG.BASE_URL}/api/bank/user-details`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -191,6 +213,8 @@ const Withdraw = () => {
       }
     } catch (err) {
       console.error('Error fetching bank details:', err);
+      // ── FIX 2: Auto-logout on 403 ────────────────────────────────────────
+      handleAuthError(err.response?.status);
       // User has no bank accounts
       setUserBanks([]);
     } finally {
@@ -207,6 +231,7 @@ const Withdraw = () => {
       
       if (!token || !user) {
         console.error('User not authenticated');
+        navigate('/login');
         return;
       }
 
@@ -219,6 +244,8 @@ const Withdraw = () => {
       setWithdrawalHistory(response.data);
     } catch (error) {
       console.error('Error fetching withdrawal history:', error);
+      // ── FIX 2: Auto-logout on 403 ────────────────────────────────────────
+      handleAuthError(error.response?.status);
       setWithdrawalHistory([]);
     } finally {
       setLoadingHistory(false);
@@ -226,10 +253,13 @@ const Withdraw = () => {
   };
 
   useEffect(() => {
+    // ── FIX 2: Token null check ───────────────────────────────────────────
+    const token = localStorage.getItem('token');
+    if (!token) { navigate('/login'); return; }
+
     const fetchData = async () => {
       try {
         const savedUser = JSON.parse(localStorage.getItem('user'));
-        const token = localStorage.getItem('token');
         
         if (savedUser && token) {
           // Fetch fresh user data from server
@@ -239,7 +269,7 @@ const Withdraw = () => {
           
           const user = userRes.data.user;
           
-          // Check 24-hour restriction
+          // Check 24-hour restriction — called ONCE here
           await check24HourRestriction();
           
           // Fetch deposit history to calculate approved deposit amount
@@ -318,6 +348,7 @@ const Withdraw = () => {
                 setUserJoinDate(savedUser.createdAt || savedUser.createdAt);
               } catch (depositErr) {
                 console.error('Error fetching deposit history:', depositErr);
+                handleAuthError(depositErr.response?.status);
                 
                 // Set balances using only approved deposit amount (matching mine page)
                 setTotalBalance('0.00');
@@ -339,6 +370,7 @@ const Withdraw = () => {
         }
       } catch (err) {
         console.error('Error in withdrawal component:', err);
+        handleAuthError(err.response?.status);
         
         // Set default balances
         setTotalBalance('0.00');
@@ -351,10 +383,23 @@ const Withdraw = () => {
     fetchUserBanks();
     fetchWithdrawalHistory();
     
-    // Countdown timer for 24-hour restriction
+    // ── FIX 1: Local countdown tick — ZERO extra API calls ────────────────
+    // OLD CODE (WRONG): setInterval(() => check24HourRestriction(), 1000)
+    //   = 60 API calls/minute = 3600/hour = server crash + 403 errors ❌
+    //
+    // NEW CODE (CORRECT): tick the ref locally every second
+    //   check24HourRestriction() runs ONCE above in fetchData()
+    //   After that, we just count down locally — no network calls ✅
     const countdownInterval = setInterval(() => {
-      check24HourRestriction();
-    }, 1000); // Update every second
+      if (secondsRemainingRef.current > 0) {
+        secondsRemainingRef.current -= 1;
+        setDisplayCountdown(formatCountdown(secondsRemainingRef.current));
+        // When countdown reaches 0, mark 24hrs as completed
+        if (secondsRemainingRef.current === 0) {
+          setHasCompleted24Hours(true);
+        }
+      }
+    }, 1000);
     
     // Cleanup function to clear any pending timeouts
     return () => {
@@ -441,12 +486,12 @@ const Withdraw = () => {
                     </div>
                   </div>
                   
-                  {/* Countdown Display */}
+                  {/* ── FIX 1: displayCountdown from local ref — no API calls ── */}
                   <div className="mt-3 p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl">
                     <div className="flex items-center justify-center space-x-2 text-amber-400">
                       <Clock size={16} />
                       <span className="text-xs font-bold">
-                        Time Remaining: {formatCountdown(countdown.secondsRemaining)}
+                        Time Remaining: {displayCountdown}
                       </span>
                     </div>
                   </div>
@@ -635,8 +680,6 @@ const Withdraw = () => {
           </ul>
         </div>
 
-     
-
         {/* Withdrawal History */}
         <div className="bg-[#212431] border border-gray-700 rounded-[2.5rem] p-6 shadow-xl">
           <div className="flex items-center space-x-2 mb-4">
@@ -751,6 +794,8 @@ const Withdraw = () => {
                 kycApproved = kycRes.data.status === 'Approved';
               } catch (kycErr) {
                 console.error('Error fetching KYC status:', kycErr);
+                // ── FIX 2: Auto-logout on 403 ──────────────────────────────
+                handleAuthError(kycErr.response?.status);
                 kycApproved = false;
               }
               
@@ -825,6 +870,8 @@ const Withdraw = () => {
                   }
                 );
               } catch (error) {
+                // ── FIX 2: Auto-logout on 403 ──────────────────────────────
+                handleAuthError(error.response?.status);
                 const errorMessage = error.response?.data?.error || 'Failed to submit withdrawal request. Please try again.';
                 showAlert('Error', errorMessage, 'error');
                 console.error('Withdrawal error:', error);
