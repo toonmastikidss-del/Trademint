@@ -38,6 +38,7 @@ import Team from './components/team';
 import ReferAndEarn from './components/ReferAndEarn';
 import PlatformInfo from './components/platform';
 import AppDownload from './components/AppDownload';
+import EarningPotential from './components/earningPotential';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -109,6 +110,7 @@ function App() {
           <Route path="/refer-earn" element={<ProtectedRoute><ReferAndEarn /></ProtectedRoute>} />
           <Route path="/platform-info" element={<ProtectedRoute><PlatformInfo /></ProtectedRoute>} />
           <Route path="/download-app" element={<AppDownload />} />
+          <Route path="/earning-potential" element={<ProtectedRoute><EarningPotential /></ProtectedRoute>} />
           <Route path='/c/login' element={<AdminLogin />} />
           <Route path='*' element={<ProtectedRoute><Home /></ProtectedRoute>} />
         </Routes>

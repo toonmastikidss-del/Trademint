@@ -321,9 +321,10 @@ const Home = () => {
             <span className='text-left text-sm font-medium cursor-pointer'>Platform Information</span>
           </div>
 
-          <div className="bg-[#212431] border border-gray-700 shadow-xl rounded-2xl mb-2 flex items-center gap-2 p-2 transition-all">
+          <div className="bg-[#212431] border border-gray-700 shadow-xl rounded-2xl mb-2 flex items-center gap-2 p-2 transition-all" onClick={() => navigate('/earning-potential')}>
             <div className='p-1 bg-[#ef865a] z-40 rounded-lg'><Newspaper size={24} color="#fff" /></div>
-            <Link to="/white"><span className='text-left text-sm font-medium text-white'>White Paper</span></Link>
+            <span className='text-left text-sm font-medium text-white'>Earning Potential</span>
+            <span className='ml-auto text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold'>Up to 6% Daily</span>
           </div>
 
           <div className="bg-[#212431] border border-gray-700 shadow-xl rounded-2xl mb-2 flex items-center gap-2 p-2 transition-all" onClick={() => navigate('/download-app')}>

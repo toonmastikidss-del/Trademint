@@ -456,6 +456,7 @@ const Mine = () => {
               { label: 'Tutorial', icon: BookOpen, path: '/tutorial' },
               { label: 'About', icon: Info, path: '/about' },
               { label: 'KYC', icon: FileText, path: '/kyc' },
+              { label: 'White Paper', icon: FileText, path: '/white' },
             ].map((item, i) => (
               <div key={i} className='flex flex-col items-center space-y-2.5 cursor-pointer group' onClick={() => item.path !== '#' && navigate(item.path)}>
                 <div className='w-14 h-14 bg-[#101821] rounded-2xl border border-gray-800 flex items-center justify-center shadow-lg group-active:scale-90 transition-all group-hover:border-[#49bace]/30 group-hover:bg-[#49bace]/5'>
