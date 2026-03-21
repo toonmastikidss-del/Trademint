@@ -25,6 +25,13 @@ const Bind = () => {
         const fetchBankDetails = async () => {
             try {
                 const token = localStorage.getItem('token')
+
+                // ✅ FIX: Token null check — "Bearer null" se 400 error aata tha
+                if (!token) {
+                    navigate('/login')
+                    return
+                }
+
                 const response = await fetch(`${API_CONFIG.BASE_URL}/api/bank/user-details`, {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -35,6 +42,14 @@ const Bind = () => {
                     const data = await response.json()
                     setBankDetails(data.bank)
                     setSubmitted(true)
+                }
+
+                // ✅ FIX: 401/403 pe bhi redirect karo
+                if (response.status === 401 || response.status === 403) {
+                    localStorage.removeItem('token')
+                    localStorage.removeItem('user')
+                    navigate('/login')
+                    return
                 }
             } catch (err) {
                 // console.log('No existing bank details found')
@@ -50,6 +65,14 @@ const Bind = () => {
             const interval = setInterval(async () => {
                 try {
                     const token = localStorage.getItem('token')
+
+                    // ✅ FIX: Token null check in polling too
+                    if (!token) {
+                        clearInterval(interval)
+                        navigate('/login')
+                        return
+                    }
+
                     const response = await fetch(`${API_CONFIG.BASE_URL}/api/bank/user-details`, {
                         headers: {
                             'Authorization': `Bearer ${token}`
@@ -64,6 +87,13 @@ const Bind = () => {
                                 showToast('Bank details verified successfully!', 'success')
                             }
                         }
+                    }
+
+                    // ✅ FIX: 401/403 on poll — logout
+                    if (response.status === 401 || response.status === 403) {
+                        localStorage.removeItem('token')
+                        localStorage.removeItem('user')
+                        navigate('/login')
                     }
                 } catch (err) {
                     // console.log('Error polling status')
@@ -112,6 +142,13 @@ const Bind = () => {
 
         try {
             const token = localStorage.getItem('token')
+
+            // ✅ FIX: Token null check on submit too
+            if (!token) {
+                navigate('/login')
+                return
+            }
+
             const response = await fetch(`${API_CONFIG.BASE_URL}/api/bank/submit`, {
                 method: 'POST',
                 headers: {
@@ -127,6 +164,11 @@ const Bind = () => {
                 setBankDetails(data.bank)
                 setSubmitted(true)
                 showToast('Bank details submitted successfully! Status: Pending', 'success')
+            } else if (response.status === 401 || response.status === 403) {
+                // ✅ FIX: 401/403 on submit — logout
+                localStorage.removeItem('token')
+                localStorage.removeItem('user')
+                navigate('/login')
             } else {
                 setError(data.message || 'Failed to submit bank details')
                 showToast('Failed to submit bank details', 'error')
