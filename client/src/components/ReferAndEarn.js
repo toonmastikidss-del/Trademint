@@ -91,8 +91,8 @@ const ReferAndEarn = () => {
         const d = statsRes.value.data;
 
         // 🔍 DEBUG: Dekho console mein kya aa raha hai backend se
-        console.log('📊 Referral Stats API Response:', d);
-        console.log('Keys:', Object.keys(d));
+        // console.log('📊 Referral Stats API Response:', d);
+        // console.log('Keys:', Object.keys(d));
 
         // Backend alag alag naam se bhej sakta hai — sab cover karte hain
         const completed = 
@@ -120,8 +120,8 @@ const ReferAndEarn = () => {
                 .reduce((sum, r) => sum + (r.rewardAmount || 0), 0)
             : 0);
 
-        console.log('✅ Resolved completed:', completed);
-        console.log('✅ Resolved rewards:', rewards);
+        // console.log('✅ Resolved completed:', completed);
+        // console.log('✅ Resolved rewards:', rewards);
 
         setStats({
           totalReferrals:     d.totalReferrals     ?? d.total        ?? 0,

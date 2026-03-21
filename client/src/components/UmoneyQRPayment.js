@@ -136,10 +136,10 @@ const UmoneyQRPayment = () => {
       formData.append('utrNumber', utr);
       formData.append('paymentScreenshot', screenshot);
       
-      console.log('Submitting deposit...');
-      console.log('Amount:', amount);
-      console.log('UTR:', utr);
-      console.log('Screenshot:', screenshot.name, screenshot.size, 'bytes');
+      // console.log('Submitting deposit...');
+      // console.log('Amount:', amount);
+      // console.log('UTR:', utr);
+      // console.log('Screenshot:', screenshot.name, screenshot.size, 'bytes');
       
       const response = await axios.post(`${API_CONFIG.BASE_URL}/api/deposit/submit`, formData, {
         headers: {
@@ -147,7 +147,7 @@ const UmoneyQRPayment = () => {
         }
       });
       
-      console.log('Deposit response:', response.data);
+      // console.log('Deposit response:', response.data);
       
       // Redirect to success page
       navigate('/payment/success');

@@ -33,7 +33,7 @@ export const refreshUserDataOnce = async () => {
       detail: { user } 
     }));
     
-    console.log('✅ User data refreshed successfully');
+    // console.log('✅ User data refreshed successfully');
     return user;
   } catch (error) {
     console.error('❌ Error refreshing user data:', error);

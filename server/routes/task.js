@@ -321,10 +321,10 @@ router.post('/claim/:taskId', authenticateToken, async (req, res) => {
             user.quantify = quantifyData.totalRevenue;
             await user.save();
             
-            console.log('📊 AUTO-RESTARTED QUANTIFYING WITH TASK REWARD');
-            console.log('New Balance:', user.balance);
-            console.log('Calculated Earning (6%):', earning.toFixed(2));
-            console.log('New Total Revenue:', quantifyData.totalRevenue.toFixed(2));
+            // console.log('📊 AUTO-RESTARTED QUANTIFYING WITH TASK REWARD');
+            // console.log('New Balance:', user.balance);
+            // console.log('Calculated Earning (6%):', earning.toFixed(2));
+            // console.log('New Total Revenue:', quantifyData.totalRevenue.toFixed(2));
           } else {
             // If not actively quantifying, reset earnings to 0
             quantifyData.todayEarning = 0;
@@ -334,13 +334,13 @@ router.post('/claim/:taskId', authenticateToken, async (req, res) => {
           quantifyData.lastActivityDate = new Date();
           await quantifyData.save();
           
-          console.log('=== TASK REWARD ACTIVITY TRACKED ===');
-          console.log('New Balance:', user.balance);
-          console.log('Mode switched to:', quantifyData.mode);
-          console.log('Total Revenue:', quantifyData.totalRevenue.toFixed(2));
-          console.log('Today Earning:', quantifyData.todayEarning.toFixed(2));
-          console.log('Is Quantifying:', quantifyData.isQuantifying);
-          console.log('================================');
+          // console.log('=== TASK REWARD ACTIVITY TRACKED ===');
+          // console.log('New Balance:', user.balance);
+          // console.log('Mode switched to:', quantifyData.mode);
+          // console.log('Total Revenue:', quantifyData.totalRevenue.toFixed(2));
+          // console.log('Today Earning:', quantifyData.todayEarning.toFixed(2));
+          // console.log('Is Quantifying:', quantifyData.isQuantifying);
+          // console.log('================================');
         }
       } catch (quantifyError) {
         console.error('Error updating quantify activity:', quantifyError);

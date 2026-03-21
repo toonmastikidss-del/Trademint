@@ -112,7 +112,7 @@ router.get('/qrcodes/:paymentMethod', async (req, res) => {
 
 // ✅ POST upload QR code — verifyAdmin middleware, adminId body me nahi chahiye ab
 router.post('/qrcodes/upload', verifyAdmin, upload.single('qrImage'), async (req, res) => {
-  console.log('Upload route called, admin:', req.admin?.username);
+  // console.log('Upload route called, admin:', req.admin?.username);
 
   try {
     if (!req.file) {

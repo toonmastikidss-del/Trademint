@@ -49,18 +49,18 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
     // Get quantify data
     let quantifyData = await Quantify.findOne({ userId });
     
-    console.log('=== RAW DB DATA BEFORE ANY LOGIC ===');
-    console.log('Found quantifyData:', quantifyData ? 'YES' : 'NO');
+    // console.log('=== RAW DB DATA BEFORE ANY LOGIC ===');
+    // console.log('Found quantifyData:', quantifyData ? 'YES' : 'NO');
     if (quantifyData) {
-      console.log('  _id:', quantifyData._id);
-      console.log('  isQuantifying:', quantifyData.isQuantifying);
-      console.log('  totalRevenue:', quantifyData.totalRevenue);
-      console.log('  todayEarning:', quantifyData.todayEarning);
-      console.log('  mode:', quantifyData.mode);
-      console.log('  lastResetDate:', quantifyData.lastResetDate);
-      console.log('  balance:', quantifyData.balance);
+      // console.log('  _id:', quantifyData._id);
+      // console.log('  isQuantifying:', quantifyData.isQuantifying);
+      // console.log('  totalRevenue:', quantifyData.totalRevenue);
+      // console.log('  todayEarning:', quantifyData.todayEarning);
+      // console.log('  mode:', quantifyData.mode);
+      // console.log('  lastResetDate:', quantifyData.lastResetDate);
+      // console.log('  balance:', quantifyData.balance);
     }
-    console.log('=====================================');
+    // console.log('=====================================');
     
     if (!quantifyData) {
       // First time - initialize with current mode
@@ -97,7 +97,7 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
       (now - new Date(quantifyData.lastActivityDate)) < 60000; // 1 minute
     
     if (isNewDay && !quantifyData.isQuantifying && !hasRecentActivity) {
-      console.log('⚠️ BACKUP RESET: Cron job missed, resetting now for user:', userId);
+      // console.log('⚠️ BACKUP RESET: Cron job missed, resetting now for user:', userId);
       
       // Save yesterday's history before resetting
       if (quantifyData.totalRevenue > 0 && quantifyData.todayEarning > 0) {
@@ -122,17 +122,17 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
       quantifyData.lastActivityDate = now;
       await quantifyData.save();
 
-      console.log('✅ BACKUP RESET: Done for user:', userId);
+      // console.log('✅ BACKUP RESET: Done for user:', userId);
     }
     
-    console.log('=== GET /user/:userId ===');
-    console.log('User ID:', userId);
-    console.log('Is Quantifying:', quantifyData.isQuantifying);
-    console.log('Total Revenue:', quantifyData.totalRevenue);
-    console.log('Today Earning:', quantifyData.todayEarning);
-    console.log('Mode:', quantifyData.mode);
-    console.log('Last Reset:', quantifyData.lastResetDate);
-    console.log('========================');
+    // console.log('=== GET /user/:userId ===');
+    // console.log('User ID:', userId);
+    // console.log('Is Quantifying:', quantifyData.isQuantifying);
+    // console.log('Total Revenue:', quantifyData.totalRevenue);
+    // console.log('Today Earning:', quantifyData.todayEarning);
+    // console.log('Mode:', quantifyData.mode);
+    // console.log('Last Reset:', quantifyData.lastResetDate);
+    // console.log('========================');
 
     res.json({
       balance: userBalance,
@@ -182,7 +182,7 @@ router.post('/start', authenticateToken, async (req, res) => {
       // ⭐ IMMEDIATELY update user.quantify with totalRevenue
       user.quantify = newTotalRevenue;
       await user.save();
-      console.log('✅ FIRST TIME QUANTIFY: user.quantify updated to', newTotalRevenue);
+      // console.log('✅ FIRST TIME QUANTIFY: user.quantify updated to', newTotalRevenue);
       
     } else {
       // Check if balance changed
@@ -212,22 +212,22 @@ router.post('/start', authenticateToken, async (req, res) => {
       // ⭐ IMMEDIATELY update user.quantify with new totalRevenue
       user.quantify = newTotalRevenue;
       await user.save();
-      console.log('✅ START QUANTIFYING: user.quantify updated to', newTotalRevenue);
-      console.log('   Balance:', userBalance);
-      console.log('   Total Revenue:', newTotalRevenue);
-      console.log('   Today Earning:', earning);
-      console.log('   Was Balance Changed:', balanceChanged);
+      // console.log('✅ START QUANTIFYING: user.quantify updated to', newTotalRevenue);
+      // console.log('   Balance:', userBalance);
+      // console.log('   Total Revenue:', newTotalRevenue);
+      // console.log('   Today Earning:', earning);
+      // console.log('   Was Balance Changed:', balanceChanged);
     }
     
     await quantifyData.save();
     
-    console.log('=== START QUANTIFYING ===');
-    console.log('User ID:', userId);
-    console.log('Saved Is Quantifying:', quantifyData.isQuantifying);
-    console.log('Saved Total Revenue:', quantifyData.totalRevenue);
-    console.log('Saved Today Earning:', quantifyData.todayEarning);
-    console.log('Saved Mode:', quantifyData.mode);
-    console.log('========================');
+    // console.log('=== START QUANTIFYING ===');
+    // console.log('User ID:', userId);
+    // console.log('Saved Is Quantifying:', quantifyData.isQuantifying);
+    // console.log('Saved Total Revenue:', quantifyData.totalRevenue);
+    // console.log('Saved Today Earning:', quantifyData.todayEarning);
+    // console.log('Saved Mode:', quantifyData.mode);
+    // console.log('========================');
     
     res.json({
       message: 'Quantifying started successfully',
@@ -278,9 +278,9 @@ router.post('/midnight-reset', authenticateToken, async (req, res) => {
     // ⭐ NOTE: user.quantify column update has been disabled
     const user = await User.findById(userId);
     if (user) {
-      console.log('✅ MIDNIGHT RESET: user.quantify update skipped (disabled by system config)');
-      console.log('   Current totalRevenue:', quantifyData.totalRevenue);
-      console.log('   Current user.quantify:', user.quantify);
+      // console.log('✅ MIDNIGHT RESET: user.quantify update skipped (disabled by system config)');
+      // console.log('   Current totalRevenue:', quantifyData.totalRevenue);
+      // console.log('   Current user.quantify:', user.quantify);
     }
     
     // Reset for new day - will be Continue mode
@@ -427,7 +427,7 @@ router.post('/debug/create-test-history', authenticateToken, async (req, res) =>
       hadDepositOrWithdrawal: false
     });
     
-    console.log('🧪 DEBUG: Created test history record:', testHistory._id);
+    // console.log('🧪 DEBUG: Created test history record:', testHistory._id);
     
     res.json({
       message: 'Test history record created',

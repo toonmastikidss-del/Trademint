@@ -37,7 +37,7 @@ const Bind = () => {
                     setSubmitted(true)
                 }
             } catch (err) {
-                console.log('No existing bank details found')
+                // console.log('No existing bank details found')
             }
         }
         
@@ -66,7 +66,7 @@ const Bind = () => {
                         }
                     }
                 } catch (err) {
-                    console.log('Error polling status')
+                    // console.log('Error polling status')
                 }
             }, 30000) // 30 seconds
             

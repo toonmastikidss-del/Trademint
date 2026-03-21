@@ -79,13 +79,13 @@ const AdminPanel = () => {
   // Clear bank details manually (show demo data instead)
   const clearBankDetails = () => {
     setBankDetails(generateDemoBankData());
-    console.log('Bank details reset to demo data');
+    // console.log('Bank details reset to demo data');
   };
 
   // Fetch bank details when bank tab is active
   useEffect(() => {
     if (activeTab === 'bank') {
-      console.log('Bank tab activated, fetching data...');
+      // console.log('Bank tab activated, fetching data...');
       fetchBankDetails();
     }
   }, [activeTab]);
@@ -93,7 +93,7 @@ const AdminPanel = () => {
   // Fetch quantify history when quantify tab is active
   useEffect(() => {
     if (activeTab === 'quantify') {
-      console.log('Quantify tab activated, fetching data...');
+      // console.log('Quantify tab activated, fetching data...');
       fetchQuantifyHistory();
     }
   }, [activeTab]);
@@ -101,7 +101,7 @@ const AdminPanel = () => {
   // Also fetch on component mount if already on bank tab
   useEffect(() => {
     if (activeTab === 'bank') {
-      console.log('Component mounted on bank tab, fetching data...');
+      // console.log('Component mounted on bank tab, fetching data...');
       fetchBankDetails();
     }
   }, []);
@@ -121,7 +121,7 @@ const AdminPanel = () => {
         return;
       }
       
-      console.log('Fetching bank details with token:', token.substring(0, 10) + '...');
+      // console.log('Fetching bank details with token:', token.substring(0, 10) + '...');
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/bank/all`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -129,9 +129,9 @@ const AdminPanel = () => {
         }
       });
       
-      console.log('Response status:', response.status);
+      // console.log('Response status:', response.status);
       const data = await response.json();
-      console.log('Received data:', data);
+      // console.log('Received data:', data);
       
       if(response.status === 403) {
         console.error('Access denied - admin privileges required. Showing demo data instead.');
@@ -145,11 +145,11 @@ const AdminPanel = () => {
         const banks = data.banks || [];
         if (banks.length === 0) {
           // No real data, use demo data
-          console.log('No real bank data found, showing demo data');
+          // console.log('No real bank data found, showing demo data');
           setBankDetails(generateDemoBankData());
         } else {
           setBankDetails(banks);
-          console.log('Bank details set to real data:', banks);
+          // console.log('Bank details set to real data:', banks);
         }
       } else {
         console.error('API Error:', data.message);
@@ -180,7 +180,7 @@ const AdminPanel = () => {
         return;
       }
       
-      console.log('Fetching quantify history with token:', token.substring(0, 10) + '...');
+      // console.log('Fetching quantify history with token:', token.substring(0, 10) + '...');
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/quantify/history`, {
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -188,9 +188,9 @@ const AdminPanel = () => {
         }
       });
       
-      console.log('Response status:', response.status);
+      // console.log('Response status:', response.status);
       const data = await response.json();
-      console.log('Received quantify data:', data);
+      // console.log('Received quantify data:', data);
       
       if(response.status === 403) {
         console.error('Access denied - admin privileges required. Showing demo data instead.');
@@ -204,11 +204,11 @@ const AdminPanel = () => {
         const history = data.history || [];
         if (history.length === 0) {
           // No real data, use demo data
-          console.log('No real quantify data found, showing demo data');
+          // console.log('No real quantify data found, showing demo data');
           setQuantifyHistory(generateDemoQuantifyData());
         } else {
           setQuantifyHistory(history);
-          console.log('Quantify history set to real data:', history);
+          // console.log('Quantify history set to real data:', history);
         }
       } else {
         console.error('API Error:', data.message);

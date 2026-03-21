@@ -63,9 +63,9 @@ const authenticateToken = (req, res, next) => {
 // Submit a new deposit
 router.post('/submit', upload.single('paymentScreenshot'), authenticateToken, async (req, res) => {
   try {
-    console.log('\n=== Deposit Submission Started ===');
-    console.log('User ID:', req.user?.id);
-    console.log('Request body:', req.body);
+    // console.log('\n=== Deposit Submission Started ===');
+    // console.log('User ID:', req.user?.id);
+    // console.log('Request body:', req.body);
     console.log('Uploaded file:', req.file ? {
       filename: req.file.filename,
       size: req.file.size,
@@ -76,7 +76,7 @@ router.post('/submit', upload.single('paymentScreenshot'), authenticateToken, as
 
     // Validate inputs
     if (!amount || !utrNumber) {
-      console.log('Validation failed: Missing amount or utrNumber');
+      //console.log('Validation failed: Missing amount or utrNumber');
       // Delete uploaded file if validation fails
       if (req.file) {
         fs.unlinkSync(req.file.path);
@@ -84,7 +84,7 @@ router.post('/submit', upload.single('paymentScreenshot'), authenticateToken, as
       return res.status(400).json({ error: 'Amount and UTR number are required' });
     }
 
-    console.log('Amount:', amount, 'UTR:', utrNumber);
+   // console.log('Amount:', amount, 'UTR:', utrNumber);
 
     // Validate UTR number format
     if (typeof utrNumber !== 'string') {
@@ -175,8 +175,8 @@ router.post('/submit', upload.single('paymentScreenshot'), authenticateToken, as
 
     await newDeposit.save();
 
-    console.log('✅ Deposit saved successfully:', newDeposit._id);
-    console.log('=== Deposit Submission Completed ===\n');
+    // console.log('✅ Deposit saved successfully:', newDeposit._id);
+    // console.log('=== Deposit Submission Completed ===\n');
 
     res.status(201).json({ 
       message: 'Deposit submitted successfully',
@@ -194,7 +194,7 @@ router.post('/submit', upload.single('paymentScreenshot'), authenticateToken, as
     if (req.file && req.file.path) {
       try {
         fs.unlinkSync(req.file.path);
-        console.log('Deleted uploaded file due to error');
+        // console.log('Deleted uploaded file due to error');
       } catch (deleteErr) {
         console.error('Error deleting file:', deleteErr);
       }
@@ -294,11 +294,11 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
         user.quantify = user.balance;
         await user.save();
         
-        console.log('✅ Deposit Approved:');
-        console.log('   Amount:', deposit.amount);
-        console.log('   Old Balance:', oldBalance.toFixed(2));
-        console.log('   New Balance:', user.balance.toFixed(2));
-        console.log('   Updated user.quantify:', user.quantify.toFixed(2));
+        // console.log('✅ Deposit Approved:');
+        // console.log('   Amount:', deposit.amount);
+        // console.log('   Old Balance:', oldBalance.toFixed(2));
+        // console.log('   New Balance:', user.balance.toFixed(2));
+        // console.log('   Updated user.quantify:', user.quantify.toFixed(2));
         
         // Update quantify data to reflect new balance
         const Quantify = require('../models/Quantify');
@@ -326,10 +326,10 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
             user.quantify = quantifyData.totalRevenue;
             await user.save();
             
-            console.log('📊 Quantifying was active - recalculated earnings:');
-            console.log('   Today Earning:', earning.toFixed(2));
-            console.log('   Total Revenue:', quantifyData.totalRevenue.toFixed(2));
-            console.log('   Updated user.quantify:', user.quantify.toFixed(2));
+            // console.log('📊 Quantifying was active - recalculated earnings:');
+            // console.log('   Today Earning:', earning.toFixed(2));
+            // console.log('   Total Revenue:', quantifyData.totalRevenue.toFixed(2));
+            // console.log('   Updated user.quantify:', user.quantify.toFixed(2));
           }
           
           await quantifyData.save();
@@ -362,18 +362,18 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
           const oldBalance = referrer.balance;
           referrer.balance += REFERRAL_REWARD;
           
-          console.log('🎉 Referral Completed & Reward Given:');
-          console.log('   Referrer:', referrer._id);
-          console.log('   Old Balance:', oldBalance);
-          console.log('   Reward: ₹', REFERRAL_REWARD);
-          console.log('   New Balance:', referrer.balance);
-          console.log('   rewardGiven:', referral.rewardGiven);
-          console.log('   referral.status:', referral.status);
+          // console.log('🎉 Referral Completed & Reward Given:');
+          // console.log('   Referrer:', referrer._id);
+          // console.log('   Old Balance:', oldBalance);
+          // console.log('   Reward: ₹', REFERRAL_REWARD);
+          // console.log('   New Balance:', referrer.balance);
+          // console.log('   rewardGiven:', referral.rewardGiven);
+          // console.log('   referral.status:', referral.status);
           
           // Update referrer's quantify field immediately with new balance
           referrer.quantify = referrer.balance;
           await referrer.save();
-          console.log('   Updated user.quantify (to balance):', referrer.quantify.toFixed(2));
+          // console.log('   Updated user.quantify (to balance):', referrer.quantify.toFixed(2));
           
           // ALSO update quantify data for the referrer if quantifying was active
           const QuantifyModel = require('../models/Quantify');
@@ -400,16 +400,16 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
               referrer.quantify = referrerQuantifyData.totalRevenue;
               await referrer.save();
               
-              console.log('📊 Quantifying was active for referrer - recalculated earnings:');
-              console.log('   Today Earning:', earning.toFixed(2));
-              console.log('   Total Revenue:', referrerQuantifyData.totalRevenue.toFixed(2));
-              console.log('   Updated user.quantify (to totalRevenue):', referrer.quantify.toFixed(2));
+              // console.log('📊 Quantifying was active for referrer - recalculated earnings:');
+              // console.log('   Today Earning:', earning.toFixed(2));
+              // console.log('   Total Revenue:', referrerQuantifyData.totalRevenue.toFixed(2));
+              // console.log('   Updated user.quantify (to totalRevenue):', referrer.quantify.toFixed(2));
             }
             
             await referrerQuantifyData.save();
           }
         } else {
-          console.log('ℹ️ No pending referral found for user:', deposit.userId);
+          // console.log('ℹ️ No pending referral found for user:', deposit.userId);
         }
       } catch (referralError) {
         console.error('Error processing referral reward:', referralError);

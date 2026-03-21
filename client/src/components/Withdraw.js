@@ -66,9 +66,9 @@ const Withdraw = () => {
       const result = await checkBalanceChange();
       
       if (result.detected) {
-        console.log('💰 Withdrawal page detected balance change!');
-        console.log('Old Balance:', result.oldBalance);
-        console.log('New Balance:', result.newBalance);
+        // console.log('💰 Withdrawal page detected balance change!');
+        // console.log('Old Balance:', result.oldBalance);
+        // console.log('New Balance:', result.newBalance);
         
         // Show notification
         showAlert(
@@ -87,7 +87,7 @@ const Withdraw = () => {
     
     // Also listen for custom balance update events
     const handleBalanceUpdate = (event) => {
-      console.log('📢 Balance update event received:', event.detail);
+      // console.log('📢 Balance update event received:', event.detail);
       detectBalanceChange();
     };
     

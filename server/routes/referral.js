@@ -85,9 +85,9 @@ router.post('/track', async (req, res) => {
   try {
     const { referralCode, userId } = req.body;
 
-    console.log('\n=== TRACK REFERRAL ===');
-    console.log('Referral Code:', referralCode);
-    console.log('User ID:', userId);
+    // console.log('\n=== TRACK REFERRAL ===');
+    // console.log('Referral Code:', referralCode);
+    // console.log('User ID:', userId);
 
     if (!referralCode || !userId) {
       return res.status(400).json({ error: 'Referral code and user ID are required' });
@@ -112,7 +112,7 @@ router.post('/track', async (req, res) => {
     });
 
     if (existingReferral) {
-      console.log('Referral already exists:', existingReferral._id);
+      // console.log('Referral already exists:', existingReferral._id);
       return res.status(400).json({ error: 'Referral already tracked' });
     }
 
@@ -130,7 +130,7 @@ router.post('/track', async (req, res) => {
       referrer: referrer.name,
       referee: userId
     });
-    console.log('========================\n');
+    // console.log('========================\n');
 
     res.json({
       message: 'Referral tracked successfully',
@@ -233,9 +233,9 @@ router.post('/apply-agent', authenticateToken, async (req, res) => {
     
     await user.save();
 
-    console.log(`✅ User ${user.name || user.phone} is now an Agent!`);
-    console.log(`   Fee deducted: ₹${AGENT_FEE}`);
-    console.log(`   New balance: ₹${user.balance.toFixed(2)}`);
+    // console.log(`✅ User ${user.name || user.phone} is now an Agent!`);
+    // console.log(`   Fee deducted: ₹${AGENT_FEE}`);
+    // console.log(`   New balance: ₹${user.balance.toFixed(2)}`);
 
     res.json({
       message: 'Congratulations! You are now an Agent!',

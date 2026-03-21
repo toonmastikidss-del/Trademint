@@ -198,12 +198,12 @@ router.post('/request', authenticateToken, async (req, res) => {
       // Sufficient balance - deduct directly
       user.balance = user.balance - amount;
       
-      console.log('=== WITHDRAWAL DEDUCTION (SIMPLE LOGIC) ===');
-      console.log('Withdrawal Amount:', amount);
-      console.log('Old Balance:', oldBalance.toFixed(2));
-      console.log('New Balance:', user.balance.toFixed(2));
-      console.log('Deducted from balance only (no complex logic)');
-      console.log('========================================');
+      // console.log('=== WITHDRAWAL DEDUCTION (SIMPLE LOGIC) ===');
+      // console.log('Withdrawal Amount:', amount);
+      // console.log('Old Balance:', oldBalance.toFixed(2));
+      // console.log('New Balance:', user.balance.toFixed(2));
+      // console.log('Deducted from balance only (no complex logic)');
+      // console.log('========================================');
       
       // Update quantify data to reflect new balance
       const Quantify = require('../models/Quantify');
@@ -230,10 +230,10 @@ router.post('/request', authenticateToken, async (req, res) => {
           // Update user.quantify with new totalRevenue
           user.quantify = quantifyData.totalRevenue;
           
-          console.log('📊 Quantifying was active - recalculated earnings:');
-          console.log('   Today Earning:', earning.toFixed(2));
-          console.log('   Total Revenue:', quantifyData.totalRevenue.toFixed(2));
-          console.log('   Updated user.quantify:', user.quantify.toFixed(2));
+          // console.log('📊 Quantifying was active - recalculated earnings:');
+          // console.log('   Today Earning:', earning.toFixed(2));
+          // console.log('   Total Revenue:', quantifyData.totalRevenue.toFixed(2));
+          // console.log('   Updated user.quantify:', user.quantify.toFixed(2));
         }
         
         await quantifyData.save();
@@ -248,10 +248,10 @@ router.post('/request', authenticateToken, async (req, res) => {
     // Update user.quantify immediately with new balance
     user.quantify = user.balance;
     
-    console.log('💰 Withdrawal Request Created:');
-    console.log('   Deducted Amount:', amount);
-    console.log('   New Balance:', user.balance.toFixed(2));
-    console.log('   Updated user.quantify:', user.quantify.toFixed(2));
+    // console.log('💰 Withdrawal Request Created:');
+    // console.log('   Deducted Amount:', amount);
+    // console.log('   New Balance:', user.balance.toFixed(2));
+    // console.log('   Updated user.quantify:', user.quantify.toFixed(2));
     
     await withdrawalRequest.save();
     await user.save();
@@ -341,9 +341,9 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
         // Balance is already correct from the initial deduction
         await userToUpdate.save();
         
-        console.log('✅ Withdrawal Approved:');
-        console.log('   User Balance:', userToUpdate.balance.toFixed(2));
-        console.log('   Updated user.quantify:', userToUpdate.quantify.toFixed(2));
+        // console.log('✅ Withdrawal Approved:');
+        // console.log('   User Balance:', userToUpdate.balance.toFixed(2));
+        // console.log('   Updated user.quantify:', userToUpdate.quantify.toFixed(2));
       }
     } else if (action === 2) {
       request.status = 'rejected';
@@ -356,9 +356,9 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
         userToUpdate.balance = userToUpdate.balance + request.amount;
         await userToUpdate.save();
         
-        console.log('❌ Withdrawal Rejected:');
-        console.log('   Restored Balance:', userToUpdate.balance.toFixed(2));
-        console.log('   Updated user.quantify:', userToUpdate.quantify.toFixed(2));
+        // console.log('❌ Withdrawal Rejected:');
+        // console.log('   Restored Balance:', userToUpdate.balance.toFixed(2));
+        // console.log('   Updated user.quantify:', userToUpdate.quantify.toFixed(2));
       }
     } else {
       return res.status(400).json({ error: 'Invalid action' });

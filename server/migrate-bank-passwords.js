@@ -12,11 +12,11 @@ const Bank = require('./models/Bank');
 
 async function migrateTransactionPasswords() {
   try {
-    console.log('🔄 Starting transaction password migration...\n');
+    // console.log('🔄 Starting transaction password migration...\n');
     
     // Find all bank records
     const banks = await Bank.find({});
-    console.log(`Found ${banks.length} bank records to process\n`);
+    // console.log(`Found ${banks.length} bank records to process\n`);
     
     let migratedCount = 0;
     let skippedCount = 0;
@@ -27,7 +27,7 @@ async function migrateTransactionPasswords() {
         // Check if transaction password looks like it's already hashed
         // Hashed passwords are typically 60+ characters
         if (bank.transactionPassword && bank.transactionPassword.length >= 60) {
-          console.log(`⏭️  Skipping bank ID: ${bank._id} (already hashed)`);
+          // console.log(`⏭️  Skipping bank ID: ${bank._id} (already hashed)`);
           skippedCount++;
           continue;
         }
@@ -44,7 +44,7 @@ async function migrateTransactionPasswords() {
         
         await bank.save();
         
-        console.log(`✅ Migrated bank ID: ${bank._id}`);
+        // console.log(`✅ Migrated bank ID: ${bank._id}`);
         migratedCount++;
         
       } catch (err) {
@@ -53,18 +53,18 @@ async function migrateTransactionPasswords() {
       }
     }
     
-    console.log('\n===========================================');
-    console.log('📊 Migration Summary:');
-    console.log(`   Total processed: ${banks.length}`);
-    console.log(`   ✅ Migrated: ${migratedCount}`);
-    console.log(`   ⏭️  Skipped: ${skippedCount}`);
-    console.log(`   ❌ Errors: ${errorCount}`);
-    console.log('===========================================\n');
+    // console.log('\n===========================================');
+    // console.log('📊 Migration Summary:');
+    // console.log(`   Total processed: ${banks.length}`);
+    // console.log(`   ✅ Migrated: ${migratedCount}`);
+    // console.log(`   ⏭️  Skipped: ${skippedCount}`);
+    // console.log(`   ❌ Errors: ${errorCount}`);
+    // console.log('===========================================\n');
     
     if (errorCount === 0) {
-      console.log('🎉 Migration completed successfully!');
+      // console.log('🎉 Migration completed successfully!');
     } else {
-      console.log('⚠️  Migration completed with some errors. Please check the logs above.');
+      // console.log('⚠️  Migration completed with some errors. Please check the logs above.');
     }
     
   } catch (err) {
@@ -73,11 +73,11 @@ async function migrateTransactionPasswords() {
   } finally {
     // Close database connection
     mongoose.connection.close();
-    console.log('\n👋 Database connection closed');
+    // console.log('\n👋 Database connection closed');
   }
 }
 
 // Run the migration
-console.log('🚀 Transaction Password Migration Script');
-console.log('========================================\n');
+// console.log('🚀 Transaction Password Migration Script');
+// console.log('========================================\n');
 migrateTransactionPasswords();

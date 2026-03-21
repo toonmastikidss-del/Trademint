@@ -70,14 +70,14 @@ export const checkBalanceChange = async () => {
     const quantifyChanged = currentQuantify !== lastKnownQuantify;
     
     if (balanceChanged || quantifyChanged) {
-      console.log('💰 BALANCE CHANGE DETECTED!');
-      console.log('Old Balance:', lastKnownBalance);
-      console.log('New Balance:', currentBalance);
-      console.log('Difference:', (currentBalance - (lastKnownBalance || 0)).toFixed(2));
+      // console.log('💰 BALANCE CHANGE DETECTED!');
+      // console.log('Old Balance:', lastKnownBalance);
+      // console.log('New Balance:', currentBalance);
+      // console.log('Difference:', (currentBalance - (lastKnownBalance || 0)).toFixed(2));
       
       if (quantifyChanged) {
-        console.log('Old Quantify:', lastKnownQuantify);
-        console.log('New Quantify:', currentQuantify);
+        // console.log('Old Quantify:', lastKnownQuantify);
+        // console.log('New Quantify:', currentQuantify);
       }
       
       // ✅ Safe save — sirf valid object hi save karo
@@ -145,7 +145,7 @@ export const forceRefreshUserData = async () => {
     lastKnownBalance = user.balance || 0;
     lastKnownQuantify = user.quantify || 0;
     
-    console.log('✅ Manual refresh completed');
+    // console.log('✅ Manual refresh completed');
     return user;
   } catch (error) {
     console.error('❌ Error refreshing user data:', error);
@@ -159,7 +159,7 @@ export const forceRefreshUserData = async () => {
 export const enableCrossTabSync = () => {
   window.addEventListener('storage', (event) => {
     if (event.key === 'user') {
-      console.log('🔄 Cross-tab balance sync detected');
+      // console.log('🔄 Cross-tab balance sync detected');
       checkBalanceChange();
     }
   });
