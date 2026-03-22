@@ -8,24 +8,16 @@ import mainIco from '../pictures/mainico.png';
 import { checkBalanceChange } from '../utils/balanceDetection';
 import { API_CONFIG } from '../config/apiConfig';
 
-// ─── Asset Preloading (runs before component mounts) ─────────────────────────
-// Preload image so it shows instantly without waiting
 const preloadedImg    = new Image();
 preloadedImg.src      = mainIco;
 
-// Preload video metadata so first frame is ready immediately
 const preloadLink     = document.createElement('link');
 preloadLink.rel       = 'preload';
 preloadLink.as        = 'video';
 preloadLink.href      = animationVideo;
 document.head.appendChild(preloadLink);
 
-// ─── Server Time Management ───────────────────────────────────────────────────
-// Strategy: fetch server time → calculate offset vs local clock → use offset
-// to derive accurate server time without extra API calls.
-// Offset is refreshed every 60s to handle device clock drift.
-// getServerNow() always returns server-corrected time — never device time.
-let serverTimeOffset = 0; // ms difference: serverClock - localClock
+let serverTimeOffset = 0; 
 
 const refreshServerOffset = async () => {
   try {
@@ -33,7 +25,6 @@ const refreshServerOffset = async () => {
     const res        = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/time`);
     const t1         = Date.now();
     const rtt        = t1 - t0;
-    // Compensate for network round-trip: server received request at t0 + rtt/2
     serverTimeOffset = new Date(res.data.serverTime).getTime() - (t0 + rtt / 2);
   } catch {
     // Keep last known offset — do not fall back to device time
@@ -129,10 +120,24 @@ const Quantify = () => {
   const [loading,                  setLoading]                  = useState(true);
   const [showLowBalanceModal,      setShowLowBalanceModal]      = useState(false);
   const [lowBalanceError,          setLowBalanceError]          = useState('');
-  const [elevenFiftyNineCountdown, setElevenFiftyNineCountdown] = useState(0);
+
+  // ── FIX 1: -1 instead of 0 ───────────────────────────────────────────────
+  // OLD: useState(0) → on mount useEffect(countdown) immediately saw 0
+  //      → called performMidnightReset() on page load every time!
+  // NEW: -1 = "not started", 0 = "countdown just finished", >0 = "running"
+  const [elevenFiftyNineCountdown, setElevenFiftyNineCountdown] = useState(-1);
+
   const [alertModal,               setAlertModal]               = useState({ isOpen: false, message: '', type: '' });
   const [mode,                     setMode]                     = useState('current');
   const [lastBalance,              setLastBalance]              = useState(0);
+
+  // ── FIX 2: Ref to prevent multiple midnight reset calls ───────────────────
+  // OLD BUG: checkForMidnight ran every 10s during 23:59-00:01 window
+  //   → setElevenFiftyNineCountdown(remainingSeconds) every 10s
+  //   → countdown kept restarting → hit 0 multiple times
+  //   → performMidnightReset called 3-4 times → data corrupted from day 2
+  // FIX: midnightResetDoneRef = true after first reset → blocks all subsequent calls
+  const midnightResetDoneRef = useRef(false);
 
   // ── Load user data ───────────────────────────────────────────────────────────
   const loadUserData = useCallback(async () => {
@@ -190,15 +195,12 @@ const Quantify = () => {
     refreshServerOffset().then(() => loadUserData());
 
     // Refresh server time offset every 60s silently
-    // Ensures getServerNow() stays accurate even when device clock drifts
-    // Cost: 1 tiny GET /time per 60s — no DB query on backend
     const clockSync = setInterval(refreshServerOffset, 60_000);
 
     return () => clearInterval(clockSync);
   }, []);
 
   // ── Polling: 30s interval, PAUSED when tab is hidden (Page Visibility API) ───
-  // Page Visibility API stops polling when user switches tabs — saves ~50% calls
   useEffect(() => {
     let interval = null;
 
@@ -233,25 +235,38 @@ const Quantify = () => {
   // ── Midnight check — uses getServerNow() (server time, not device time) ──────
   useEffect(() => {
     const checkForMidnight = () => {
-      // getServerNow() uses server time offset — NOT device local time
-      const currentTime = getServerNow();
-      const hours       = currentTime.getHours();
-      const minutes     = currentTime.getMinutes();
-      const seconds     = currentTime.getSeconds();
+      // ── FIX 3: Use functional updater — never override a running countdown ──
+      // OLD BUG: setElevenFiftyNineCountdown(remainingSeconds) every 10s
+      //   = countdown kept getting reset: 1:59 → 10s → 1:49 → 10s → 1:39...
+      //   = hit 0 multiple times per midnight window → multiple resets
+      // NEW FIX: functional updater checks prev — only sets if not already running
+      setElevenFiftyNineCountdown(prev => {
+        // If countdown already running → do NOT override it
+        if (prev > 0) return prev;
+        // If midnight reset already done for this window → skip
+        if (midnightResetDoneRef.current) return prev;
 
-      if ((hours === 23 && minutes === 59) || (hours === 0 && minutes <= 1)) {
+        const currentTime = getServerNow();
+        const hours       = currentTime.getHours();
+        const minutes     = currentTime.getMinutes();
+        const seconds     = currentTime.getSeconds();
 
-        let remainingSeconds = 120;
-        if (hours === 23 && minutes === 59) {
-          remainingSeconds = (60 - seconds) + 60;
-        } else if (hours === 0 && minutes === 0) {
-          remainingSeconds = 60 - seconds;
-        } else if (hours === 0 && minutes === 1) {
-          remainingSeconds = 10;
+        if ((hours === 23 && minutes === 59) || (hours === 0 && minutes <= 1)) {
+
+          let remainingSeconds = 120;
+          if (hours === 23 && minutes === 59) {
+            remainingSeconds = (60 - seconds) + 60;
+          } else if (hours === 0 && minutes === 0) {
+            remainingSeconds = 60 - seconds;
+          } else if (hours === 0 && minutes === 1) {
+            remainingSeconds = 10;
+          }
+
+          return remainingSeconds; // Start countdown — only happens once
         }
 
-        setElevenFiftyNineCountdown(remainingSeconds);
-      }
+        return prev; // Not midnight window — no change
+      });
     };
 
     // Check every 10s — plenty for a 2-minute midnight window
@@ -271,73 +286,92 @@ const Quantify = () => {
 
       interval = setInterval(() => {
         setElevenFiftyNineCountdown(prev => {
-          if (prev <= 1) {
-            return 0;
-          }
+          if (prev <= 1) return 0;
           return prev - 1;
         });
       }, 1000);
 
-    } else if (elevenFiftyNineCountdown === 0 && elevenFiftyNineCountdown !== -1) {
+    } else if (elevenFiftyNineCountdown === 0) {
 
-      const performMidnightReset = async () => {
-        try {
-          const token = localStorage.getItem('token');
-          const user  = JSON.parse(localStorage.getItem('user'));
-
-          if (!token || !user) {
-            console.warn('⚠️ User not authenticated, skipping reset');
-            setElevenFiftyNineCountdown(-1);
-            return;
-          }
-
-          // Use server time (via offset) — not device time
-          const currentTime       = getServerNow();
-          const hours             = currentTime.getHours();
-          const minutes           = currentTime.getMinutes();
-          const isActuallyMidnight = (hours === 23 && minutes === 59) || (hours === 0 && minutes <= 1);
-
-          if (!isActuallyMidnight) {
-            setElevenFiftyNineCountdown(-1);
-            return;
-          }
-
-          await axios.post(
-            `${API_CONFIG.BASE_URL}/api/quantify/midnight-reset`,
-            {},
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-
-          const response = await axios.get(
-            `${API_CONFIG.BASE_URL}/api/quantify/user/${user._id}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-
-          const data = response.data;
-          setBalance(data.balance || 0);
-          setTotalRevenue(data.totalRevenue || 0);
-          setTodayEarning(0);
-          setIsQuantifying(false);
-          setMode(data.mode || 'continue');
-
-          setAlertModal({
-            isOpen: true,
-            message: 'New day started! Click "Start Quantifying" to continue.',
-            type: 'success',
-          });
-
-          setElevenFiftyNineCountdown(-1);
-        } catch (error) {
-          console.error('❌ Error in midnight reset:', error);
-          setElevenFiftyNineCountdown(-1);
-        }
-      };
-
-      performMidnightReset();
+      // ── FIX 4: midnightResetDoneRef guard — reset runs EXACTLY ONCE ─────
+      // OLD BUG: elevenFiftyNineCountdown hit 0 → performMidnightReset()
+      //   But checkForMidnight was restarting countdown during 00:00-00:01
+      //   → countdown hit 0 again → reset called again (2-3 times per midnight)
+      // NEW FIX: ref check ensures reset never called twice
+      if (!midnightResetDoneRef.current) {
+        midnightResetDoneRef.current = true; // Lock before async call
+        performMidnightReset();
+      }
+      // Set -1 so checkForMidnight stops trying to restart countdown
+      setElevenFiftyNineCountdown(-1);
     }
+    // -1 case: intentionally no action
 
     return () => { if (interval) clearInterval(interval); };
   }, [elevenFiftyNineCountdown]);
+
+  // ── Reset midnightResetDoneRef at 6 AM each day ───────────────────────────
+  // So next midnight gets a fresh start
+  useEffect(() => {
+    const checkReset = () => {
+      const hour = getServerNow().getHours();
+      if (hour === 6) {
+        midnightResetDoneRef.current = false;
+      }
+    };
+    const interval = setInterval(checkReset, 5 * 60_000); // every 5 min
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── Midnight reset (called exactly once per midnight) ─────────────────────
+  const performMidnightReset = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const user  = JSON.parse(localStorage.getItem('user'));
+
+      if (!token || !user) {
+        console.warn('⚠️ User not authenticated, skipping reset');
+        return;
+      }
+
+      // Use server time (via offset) — not device time
+      const currentTime        = getServerNow();
+      const hours              = currentTime.getHours();
+      const minutes            = currentTime.getMinutes();
+      const isActuallyMidnight = (hours === 23 && minutes === 59) || (hours === 0 && minutes <= 1);
+
+      if (!isActuallyMidnight) {
+        return;
+      }
+
+      await axios.post(
+        `${API_CONFIG.BASE_URL}/api/quantify/midnight-reset`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const response = await axios.get(
+        `${API_CONFIG.BASE_URL}/api/quantify/user/${user._id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      const data = response.data;
+      setBalance(data.balance || 0);
+      setTotalRevenue(data.totalRevenue || 0);
+      setTodayEarning(0);
+      setIsQuantifying(false);
+      setMode(data.mode || 'continue');
+
+      setAlertModal({
+        isOpen: true,
+        message: 'New day started! Click "Start Quantifying" to continue.',
+        type: 'success',
+      });
+
+    } catch (error) {
+      console.error('❌ Error in midnight reset:', error);
+    }
+  };
 
   // ── Start quantifying ─────────────────────────────────────────────────────────
   const handleStartQuantifying = async () => {

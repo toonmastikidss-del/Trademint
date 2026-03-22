@@ -93,7 +93,7 @@ const earningPlans = [
     name: 'Growth Plan',
     dailyReturn: '6%',
     duration: '60 Days',
-    minDeposit: '₹5,001',
+    minDeposit: '₹5,000',
     maxDeposit: '₹20,000',
     color: 'from-emerald-500 to-green-400',
     shadow: 'shadow-emerald-500/20',
@@ -241,74 +241,123 @@ const EarningPotential = () => {
           )}
         </div>
 
-        {/* ── Earning Plans (original UI) ── */}
-        <div className="space-y-4">
-          <div className="flex items-center space-x-2 mb-1 px-2">
-            <Target size={18} className="text-[#49bace]" />
-            <h3 className="text-sm font-black text-white uppercase tracking-widest">Quantification Plans</h3>
+        {/* ── Earning Plans (Enhanced UI) ── */}
+        <div className="space-y-5">
+          <div className="flex items-center justify-between mb-2 px-2">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-[#49bace]/10 rounded-xl">
+                <Target size={18} className="text-[#49bace]" />
+              </div>
+              <h3 className="text-base font-black text-white uppercase tracking-widest">Quantification Plans</h3>
+            </div>
+            <div className="bg-emerald-500/10 border border-emerald-500/30 px-3 py-1.5 rounded-full">
+              <span className="text-[9px] font-black text-emerald-400 uppercase">6% Daily Return</span>
+            </div>
           </div>
 
           {earningPlans.map((plan, index) => (
             <div
               key={index}
-              className={`bg-[#212431] border border-gray-700 rounded-[2rem] p-6 shadow-xl relative overflow-hidden hover:border-gray-600 transition-all ${plan.shadow}`}
+              className={`bg-gradient-to-br from-[#212431] to-[#1a1f2e] border border-gray-700/80 rounded-[2.5rem] p-6 shadow-2xl relative overflow-hidden hover:border-gray-600 transition-all duration-300 group ${plan.shadow}`}
             >
-              {/* Top gradient bar */}
-              <div className={`absolute top-0 left-0 w-full h-1 bg-gradient-to-r ${plan.color}`} />
-
-              {/* Tag */}
-              <div className={`absolute top-4 right-4 bg-gradient-to-r ${plan.color} px-2 py-0.5 rounded-full`}>
-                <span className="text-[8px] font-black text-white">{plan.tag}</span>
+              {/* Animated gradient border on hover */}
+              <div className="absolute inset-0 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none">
+                <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r ${plan.color}`}></div>
+                <div className={`absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r ${plan.color}`}></div>
               </div>
 
-              <div className="flex justify-between items-start mb-5">
-                <div className="flex items-center space-x-3">
-                  <div className={`p-3 bg-gradient-to-br ${plan.color} rounded-2xl shadow-lg`}>
-                    <plan.icon size={22} className="text-white" />
+              {/* Top gradient accent bar */}
+              <div className="absolute top-0 left-0 w-full rounded-t-[2.5rem] overflow-hidden">
+                <div className={`h-1.5 w-full bg-gradient-to-r ${plan.color}`}></div>
+              </div>
+
+              {/* Plan Tag Badge */}
+              <div className={`absolute top-5 right-5 bg-gradient-to-r ${plan.color} px-3 py-1.5 rounded-full shadow-lg`}>
+                <span className="text-[9px] font-black text-white tracking-wider">{plan.tag}</span>
+              </div>
+
+              {/* Header Section */}
+              <div className="flex justify-between items-start mb-6 mt-2">
+                <div className="flex items-center space-x-4">
+                  <div className={`p-3.5 bg-gradient-to-br ${plan.color} rounded-2xl shadow-xl transform group-hover:scale-105 transition-transform duration-300`}>
+                    <plan.icon size={24} className="text-white" strokeWidth={2.5} />
                   </div>
                   <div>
-                    <h4 className="text-lg font-bold text-white">{plan.name}</h4>
-                    <p className="text-[10px] text-gray-500 mt-0.5">{plan.duration} · Compound</p>
+                    <h4 className="text-xl font-black text-white mb-1">{plan.name}</h4>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] text-gray-400 font-medium">{plan.duration}</span>
+                      <span className="w-1 h-1 bg-gray-600 rounded-full"></span>
+                      <span className="text-[10px] text-gray-400 font-medium">Auto-Compound</span>
+                    </div>
                   </div>
                 </div>
+                
+                {/* Daily Return Badge */}
                 <div className="text-right">
-                  <div className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-[#49bace]">
+                  <div className="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-green-400 to-[#49bace] leading-none">
                     {plan.dailyReturn}
                   </div>
-                  <span className="text-[9px] text-gray-500 uppercase font-bold">Daily Return</span>
+                  <div className="flex items-center justify-end space-x-1 mt-1">
+                    <ArrowUpRight size={12} className="text-emerald-400" />
+                    <span className="text-[8px] text-gray-500 uppercase font-bold">Daily Return</span>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <div className="bg-[#101821] rounded-xl p-3 border border-gray-800">
-                  <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Min Deposit</span>
-                  <span className="text-sm font-bold text-white">{plan.minDeposit}</span>
+              {/* Deposit Range Cards */}
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <div className="bg-[#101821]/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-800/60 group-hover:border-gray-700/60 transition-colors">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                    <span className="text-[8px] text-gray-500 uppercase font-bold tracking-wider">Min Deposit</span>
+                  </div>
+                  <span className="text-base font-black text-white">{plan.minDeposit}</span>
                 </div>
-                <div className="bg-[#101821] rounded-xl p-3 border border-gray-800">
-                  <span className="text-[9px] text-gray-500 uppercase font-bold block mb-1">Max Deposit</span>
-                  <span className="text-sm font-bold text-white">{plan.maxDeposit}</span>
+                <div className="bg-[#101821]/80 backdrop-blur-sm rounded-2xl p-4 border border-gray-800/60 group-hover:border-gray-700/60 transition-colors">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
+                    <span className="text-[8px] text-gray-500 uppercase font-bold tracking-wider">Max Deposit</span>
+                  </div>
+                  <span className="text-base font-black text-white">{plan.maxDeposit}</span>
                 </div>
               </div>
 
-              {/* What you earn in 30 days */}
-              <div className="bg-[#101821]/60 rounded-xl p-3 border border-gray-800/60 mb-4">
+              {/* Estimated Earnings Card */}
+              <div className="bg-gradient-to-br from-[#101821]/90 to-[#0d1e30]/80 backdrop-blur-sm rounded-2xl p-4 border border-emerald-500/20 mb-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[9px] text-gray-500 uppercase font-bold">
-                    Estimated after {plan.duration}
-                  </span>
-                  <span className="text-sm font-black text-emerald-400">
-                    ₹{fmt(ALL[parseInt(plan.minDeposit.replace(/[^0-9]/g,''))][
-                        parseInt(plan.duration) - 1
-                      ]?.total || 0)}+
+                  <div className="flex items-center space-x-2">
+                    <div className="p-1.5 bg-emerald-500/10 rounded-lg">
+                      <TrendingUp size={14} className="text-emerald-400" />
+                    </div>
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-wider">
+                      Est. after {plan.duration}
+                    </span>
+                  </div>
+                  <span className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400">
+                    {(() => {
+                      const rawAmt = parseInt(plan.minDeposit.replace(/[^0-9]/g, ''), 10);
+                      const key    = AMOUNTS.reduce((p, c) =>
+                        Math.abs(c - rawAmt) < Math.abs(p - rawAmt) ? c : p
+                      );
+                      const idx   = parseInt(plan.duration, 10) - 1;
+                      const total = ALL[key]?.[idx]?.total;
+                      return total ? `₹${fmt(total)}+` : '—';
+                    })()}
                   </span>
                 </div>
               </div>
 
+              {/* CTA Button */}
               <button
                 onClick={() => navigate('/quantify')}
-                className={`w-full py-4 bg-gradient-to-r ${plan.color} text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg hover:shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all`}
+                className={`w-full py-4.5 bg-gradient-to-r ${plan.color} text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 relative overflow-hidden group`}
               >
-                Start Quantifying Now
+                <span className="relative z-10 flex items-center justify-center space-x-2">
+                  <span>Start Quantifying Now</span>
+                  <ChevronLeft size={16} className="rotate-180" />
+                </span>
+                {/* Shimmer effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
               </button>
             </div>
           ))}
@@ -452,9 +501,9 @@ const EarningPotential = () => {
               }`}
             >
               <div className={`text-xs font-black ${selectedAmt === a ? 'text-[#49bace]' : 'text-amber-400'}`}>{fmtK(a)}</div>
-              <div className="text-[10px] text-gray-300 text-right font-mono">₹{fmt(ALL[a][29].total)}</div>
-              <div className="text-[10px] text-gray-300 text-right font-mono">₹{fmt(ALL[a][59].total)}</div>
-              <div className="text-[10px] text-emerald-400 text-right font-bold font-mono">₹{fmt(ALL[a][89].total)}</div>
+              <div className="text-[10px] text-gray-300 text-right font-mono">₹{fmt(ALL[a]?.[29]?.total || 0)}</div>
+              <div className="text-[10px] text-gray-300 text-right font-mono">₹{fmt(ALL[a]?.[59]?.total || 0)}</div>
+              <div className="text-[10px] text-emerald-400 text-right font-bold font-mono">₹{fmt(ALL[a]?.[89]?.total || 0)}</div>
             </div>
           ))}
         </div>

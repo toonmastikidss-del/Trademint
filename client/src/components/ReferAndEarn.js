@@ -173,7 +173,7 @@ const ReferAndEarn = () => {
           url: shareLink,
         });
       } catch (err) {
-        console.log('Share cancelled:', err);
+        // console.log('Share cancelled:', err);
       }
     } else {
       navigator.clipboard.writeText(shareMessage).then(() => {

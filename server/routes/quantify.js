@@ -77,8 +77,6 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
     }
     
     // ✅ IMPROVED: Check karo ki cron job ne reset kiya ya nahi
-    // Agar lastResetDate aaj ki hai toh cron job already reset kar chuka hai
-    // Agar nahi hai toh backup reset karo (safety net)
     const now = new Date();
     const lastReset = quantifyData.lastResetDate;
 
@@ -92,11 +90,16 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
 
     const isNewDay = !lastResetIST || lastResetIST !== todayIST;
     
-    // Only reset if it's a new day AND quantifying was not active
-    const hasRecentActivity = quantifyData.lastActivityDate && 
-      (now - new Date(quantifyData.lastActivityDate)) < 60000; // 1 minute
+    // ── FIX: Removed hasRecentActivity check ─────────────────────────────────
+    // OLD BUG: hasRecentActivity = (now - lastActivityDate) < 60000
+    //   Midnight reset sets lastActivityDate = now (midnight time)
+    //   Day 2 morning: user opens app within 60s of midnight → hasRecentActivity = true
+    //   → backup reset BLOCKED → day 2 data never reset → cron issue persisted
+    //
+    // FIX: Only check isNewDay + isQuantifying. lastActivityDate is unreliable
+    // because midnight reset itself updates it to midnight time.
     
-    if (isNewDay && !quantifyData.isQuantifying && !hasRecentActivity) {
+    if (isNewDay && !quantifyData.isQuantifying) {
       // console.log('⚠️ BACKUP RESET: Cron job missed, resetting now for user:', userId);
       
       // Save yesterday's history before resetting
@@ -119,7 +122,10 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
       quantifyData.todayEarning = 0;
       quantifyData.isQuantifying = false;
       quantifyData.lastResetDate = now;
-      quantifyData.lastActivityDate = now;
+      // ── FIX: Do NOT update lastActivityDate here ─────────────────────────
+      // Old code: quantifyData.lastActivityDate = now
+      // This caused hasRecentActivity = true on next GET → blocked backup reset
+      // Now lastActivityDate is left unchanged during backup reset
       await quantifyData.save();
 
       // console.log('✅ BACKUP RESET: Done for user:', userId);
