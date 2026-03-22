@@ -65,11 +65,6 @@ router.post('/request', authenticateToken, async (req, res) => {
       });
     }
     
-    // ── FIX: Removed hardcoded localhost:5000 fetch calls ─────────────────
-    // Old code used fetch('http://localhost:5000/api/kyc/status') which
-    // breaks on Railway/Render production servers.
-    // Using direct DB queries instead — faster + works on all environments.
-
     // Fetch KYC status directly from DB
     let kycApproved = false;
     try {
@@ -86,9 +81,7 @@ router.post('/request', authenticateToken, async (req, res) => {
     const currentDate = new Date();
     const daysSinceRegistration = Math.floor((currentDate - userJoinDate) / (1000 * 60 * 60 * 24));
     
-    // ── FIX: Fetch deposits directly from DB ─────────────────────────────
-    // Old: fetch(`http://localhost:5000/api/deposit/user/${user._id}`)
-    // New: direct Mongoose query
+    // Fetch deposits directly from DB
     let approvedAmount = 0;
     try {
       const Deposit = require('../models/Deposit');
@@ -99,78 +92,86 @@ router.post('/request', authenticateToken, async (req, res) => {
       approvedAmount = 0;
     }
     
-    // Calculate balances
-    const availableBalance = user.balance;
-    const totalBalance = Math.max(user.balance, user.quantify || 0);
-    const quantifyEarnings = totalBalance - availableBalance;
-    
-    // Determine maximum withdrawal amount based on KYC and days
-    let maxWithdrawalAmount = totalBalance; // Default to total balance
+    // ── TWO WALLET SYSTEM ────────────────────────────────────────────────
+    // mainBalance   = user.balance   (deposit wallet)
+    // compoundBalance = user.quantify (compound wallet = main + earnings)
+    // earnings      = compoundBalance - mainBalance
+    //
+    // Rule:
+    //   1. Pehle earnings se kato
+    //   2. Agar amount > earnings, bacha hua main se kato
+    //   3. Compound always = new mainBalance (no pending earnings after withdrawal)
+    // ────────────────────────────────────────────────────────────────────
+    const mainBalance     = user.balance;
+    const compoundBalance = user.quantify || 0;
+    const earnings        = Math.max(0, compoundBalance - mainBalance);
+    const totalWithdrawable = compoundBalance; // max user can withdraw
+
+    // KYC / days-based restriction check
+    let maxWithdrawalAmount = totalWithdrawable;
     
     if (!kycApproved || daysSinceRegistration < 14) {
-      // Without KYC or before 14 days: Can only withdraw quantify earnings
-      maxWithdrawalAmount = quantifyEarnings;
+      // Without KYC or before 14 days: can only withdraw earnings
+      maxWithdrawalAmount = earnings;
       
       if (amount > maxWithdrawalAmount) {
-        let errorMsg = `Without KYC completion and before 14 days, you can only withdraw ₹${maxWithdrawalAmount.toFixed(2)} (your quantify earnings).`;
+        let errorMsg = `Without KYC completion and before 14 days, you can only withdraw ₹${maxWithdrawalAmount.toFixed(2)} (your compound earnings).`;
         
         if (!kycApproved && daysSinceRegistration < 14) {
-          errorMsg += ' Complete KYC and wait 14 days to withdraw from Available Balance.';
+          errorMsg += ' Complete KYC and wait 14 days to withdraw from Main Balance.';
         } else if (!kycApproved) {
           errorMsg += ' Complete KYC to withdraw more.';
         } else {
-          errorMsg += ' Wait until day 14 to withdraw from Available Balance.';
+          errorMsg += ' Wait until day 14 to withdraw from Main Balance.';
         }
         
         return res.status(400).json({ error: errorMsg });
       }
     } else if (kycApproved && daysSinceRegistration >= 14) {
-      // After KYC + 14 days: Can withdraw up to 50% of Available Balance + all quantify earnings
-      const fiftyPercentOfAvailable = availableBalance * 0.50;
-      maxWithdrawalAmount = fiftyPercentOfAvailable + quantifyEarnings;
+      // After KYC + 14 days: 50% of main + all earnings
+      const fiftyPercentOfMain = mainBalance * 0.50;
+      maxWithdrawalAmount = fiftyPercentOfMain + earnings;
       
       if (amount > maxWithdrawalAmount) {
         return res.status(400).json({ 
-          error: `After KYC and 14 days, you can withdraw up to 50% of Available Balance plus all quantify earnings. Maximum allowed: ₹${maxWithdrawalAmount.toFixed(2)} (50% of Available: ₹${fiftyPercentOfAvailable.toFixed(2)} + Quantify Earnings: ₹${quantifyEarnings.toFixed(2)}).` 
+          error: `After KYC and 14 days, you can withdraw up to 50% of Main Balance plus all compound earnings. Maximum allowed: ₹${maxWithdrawalAmount.toFixed(2)} (50% of Main: ₹${fiftyPercentOfMain.toFixed(2)} + Compound Earnings: ₹${earnings.toFixed(2)}).` 
         });
       }
     }
     
-    // Final check: ensure amount doesn't exceed total available funds
-    if (amount > totalBalance) {
+    // Final safety check
+    if (amount > totalWithdrawable) {
       return res.status(400).json({ 
-        error: 'Insufficient balance for withdrawal. Amount exceeds total balance.' 
+        error: `Insufficient balance. Maximum withdrawable: ₹${totalWithdrawable.toFixed(2)}` 
       });
     }
     
-    // Use the already-fetched userBank object (from password verification above)
-    
     // Calculate handling fee (4%)
-    const feeAmount = amount * 0.04;
+    const feeAmount    = amount * 0.04;
     const actualReceipt = amount - feeAmount;
     
     // Get user's withdrawal history
-    const existingRequests = await WithdrawalRequest.find({ userId: user._id });
-    const totalRequests = existingRequests.length + 1;
-    const approvedRequests = existingRequests.filter(r => r.status === 'approved').length;
-    const rejectedRequests = existingRequests.filter(r => r.status === 'rejected').length;
+    const existingRequests  = await WithdrawalRequest.find({ userId: user._id });
+    const totalRequests     = existingRequests.length + 1;
+    const approvedRequests  = existingRequests.filter(r => r.status === 'approved').length;
+    const rejectedRequests  = existingRequests.filter(r => r.status === 'rejected').length;
     
-    // Create withdrawal request
+    // Create withdrawal request document
     const withdrawalRequest = new WithdrawalRequest({
       userId: user._id,
       userName: user.name,
       userPhone: user.phone,
       amount: amount,
       userFinancialData: {
-        totalBalance: totalBalance,
-        availableBalance: availableBalance,
+        totalBalance: compoundBalance,
+        availableBalance: mainBalance,
         approvedDepositAmount: approvedAmount
       },
       bankAccount: {
         accountHolder: userBank.accountHolder,
         accountNumber: userBank.accountNumber,
         ifsc: userBank.ifsc,
-        bankName: userBank.bankName || 'Default Bank' // Use bankName if available, or fallback to a default
+        bankName: userBank.bankName || 'Default Bank'
       },
       handlingFee: {
         percentage: 4,
@@ -183,7 +184,6 @@ router.post('/request', authenticateToken, async (req, res) => {
         rejectedRequests: rejectedRequests,
         lastWithdrawalRequest: new Date()
       },
-      // Additional user details for admin panel
       userDetails: {
         lastLoginDate: user.lastActive,
         registrationDate: user.createdAt,
@@ -193,70 +193,58 @@ router.post('/request', authenticateToken, async (req, res) => {
       }
     });
     
-    // SIMPLE DEPOSIT-STYLE LOGIC: Just deduct from balance
-    // Total revenue will automatically update via user.quantify field
-    
-    const oldBalance = user.balance;
-    
-    if (user.balance >= amount) {
-      // Sufficient balance - deduct directly
-      user.balance = user.balance - amount;
-      
-      // console.log('=== WITHDRAWAL DEDUCTION (SIMPLE LOGIC) ===');
-      // console.log('Withdrawal Amount:', amount);
-      // console.log('Old Balance:', oldBalance.toFixed(2));
-      // console.log('New Balance:', user.balance.toFixed(2));
-      // console.log('Deducted from balance only (no complex logic)');
-      // console.log('========================================');
-      
-      // Update quantify data to reflect new balance
-      const Quantify = require('../models/Quantify');
-      let quantifyData = await Quantify.findOne({ userId: user._id });
-      
-      if (quantifyData) {
-        // Check if quantifying was active
-        const wasQuantifyingActive = quantifyData.isQuantifying;
-        
-        // Switch to Current mode when withdrawal happens
-        quantifyData.mode = 'current';
-        quantifyData.balance = user.balance; // Update to new balance
-        quantifyData.totalRevenue = user.balance; // Reset total revenue to new balance
-        quantifyData.todayEarning = 0; // Reset today's earning
-        quantifyData.lastActivityDate = new Date();
-        
-        // If quantifying was active, automatically start calculating earnings
-        if (wasQuantifyingActive) {
-          const earning = user.balance * 0.06;
-          quantifyData.todayEarning = earning;
-          quantifyData.totalRevenue = user.balance + earning;
-          quantifyData.isQuantifying = true;
-          
-          // Update user.quantify with new totalRevenue
-          user.quantify = quantifyData.totalRevenue;
-          
-          // console.log('📊 Quantifying was active - recalculated earnings:');
-          // console.log('   Today Earning:', earning.toFixed(2));
-          // console.log('   Total Revenue:', quantifyData.totalRevenue.toFixed(2));
-          // console.log('   Updated user.quantify:', user.quantify.toFixed(2));
-        }
-        
-        await quantifyData.save();
-      }
+    // ── DEDUCTION LOGIC (Two Wallet System) ─────────────────────────────
+    //
+    // Example A: main=5, compound=10, withdraw=3
+    //   earnings = 10 - 5 = 5
+    //   amount(3) <= earnings(5)  → only compound reduces
+    //   new main     = 5  (unchanged)
+    //   new compound = 10 - 3 = 7
+    //
+    // Example B: main=5, compound=10, withdraw=7
+    //   earnings = 10 - 5 = 5
+    //   amount(7) > earnings(5)  → exhaust earnings, take rest from main
+    //   remainingAfterEarnings = 7 - 5 = 2
+    //   new main     = 5 - 2 = 3
+    //   new compound = 3 (equals new main, earnings now 0)
+    // ────────────────────────────────────────────────────────────────────
+
+    if (amount <= earnings) {
+      // Case A: deduct only from compound (earnings side)
+      user.quantify = compoundBalance - amount;
+      // user.balance stays unchanged
+
     } else {
-      // Insufficient balance
-      return res.status(400).json({ 
-        error: 'Insufficient balance for this withdrawal amount' 
-      });
+      // Case B: exhaust all earnings first, then deduct rest from main
+      const remainingAfterEarnings = amount - earnings;
+      user.balance  = mainBalance - remainingAfterEarnings;
+      user.quantify = user.balance; // compound resets to new main (0 earnings left)
     }
+
+    // Sync quantify model if it exists
+    const Quantify = require('../models/Quantify');
+    let quantifyData = await Quantify.findOne({ userId: user._id });
     
-    // Update user.quantify immediately with new balance
-    user.quantify = user.balance;
-    
-    // console.log('💰 Withdrawal Request Created:');
-    // console.log('   Deducted Amount:', amount);
-    // console.log('   New Balance:', user.balance.toFixed(2));
-    // console.log('   Updated user.quantify:', user.quantify.toFixed(2));
-    
+    if (quantifyData) {
+      const wasQuantifyingActive = quantifyData.isQuantifying;
+      
+      quantifyData.mode            = 'current';
+      quantifyData.balance         = user.balance;
+      quantifyData.totalRevenue    = user.quantify;
+      quantifyData.todayEarning    = 0;
+      quantifyData.lastActivityDate = new Date();
+      
+      if (wasQuantifyingActive) {
+        const earning               = user.balance * 0.06;
+        quantifyData.todayEarning   = earning;
+        quantifyData.totalRevenue   = user.balance + earning;
+        quantifyData.isQuantifying  = true;
+        user.quantify               = quantifyData.totalRevenue;
+      }
+      
+      await quantifyData.save();
+    }
+
     await withdrawalRequest.save();
     await user.save();
     
@@ -280,7 +268,6 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
     
-    // Check if the requesting user is authorized
     if (req.user.id !== userId) {
       return res.status(403).json({ error: 'Unauthorized to view these requests' });
     }
@@ -298,7 +285,6 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
 // Get all withdrawal requests (for admin)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    // Check if user is admin
     const user = await User.findById(req.user.id);
     if (user.status !== 'Admin') {
       return res.status(403).json({ error: 'Admin access required' });
@@ -318,9 +304,8 @@ router.get('/', authenticateToken, async (req, res) => {
 router.put('/status/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const { action } = req.body; // 1 = approve, 2 = reject
+    const { action } = req.body;
     
-    // Check if user is admin
     const adminUser = await User.findById(req.user.id);
     if (adminUser.status !== 'Admin') {
       return res.status(403).json({ error: 'Admin access required' });
@@ -331,44 +316,57 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Withdrawal request not found' });
     }
     
-    const oldStatus = request.status;
-    
-    // Update request status
     if (action === 1) {
       request.status = 'approved';
       request.action = 1;
       
-      // Update user balance and total revenue if approved
+      // Approved: amount already deducted at request time, nothing to do
       const userToUpdate = await User.findById(request.userId);
       if (userToUpdate) {
-        // Since amount was already deducted when request was made, no further action needed
-        // Balance is already correct from the initial deduction
         await userToUpdate.save();
-        
-        // console.log('✅ Withdrawal Approved:');
-        // console.log('   User Balance:', userToUpdate.balance.toFixed(2));
-        // console.log('   Updated user.quantify:', userToUpdate.quantify.toFixed(2));
       }
+
     } else if (action === 2) {
       request.status = 'rejected';
       request.action = 2;
       
-      // Add the withdrawal amount back to balance when rejected
+      // Rejected: restore the amount back using two-wallet logic
       const userToUpdate = await User.findById(request.userId);
       if (userToUpdate) {
-        // Simply add back the full amount to balance
-        userToUpdate.balance = userToUpdate.balance + request.amount;
+        // ── RESTORE LOGIC ──────────────────────────────────────────────
+        // We simply reverse what was deducted.
+        // The safest approach: add amount back to both balance and quantify
+        // proportionally. Since we don't store which wallet was used,
+        // we restore to compound first (safer — doesn't over-inflate main).
+        //
+        // Simple rule on rejection:
+        //   compound += amount  (always safe)
+        //   if compound was already > main before, keep main as-is
+        //   if main was reduced, restore main too
+        //
+        // Simplest safe restore: add back to quantify (compound).
+        // If main was also reduced (Case B), we restore main too.
+        // We detect Case B: at request time, mainBalance was stored in userFinancialData.
+        // ───────────────────────────────────────────────────────────────
+        const requestedAmount    = request.amount;
+        const mainAtRequestTime  = request.userFinancialData?.availableBalance || userToUpdate.balance;
+        const currentMain        = userToUpdate.balance;
+
+        // If main was reduced (currentMain < mainAtRequestTime), restore it
+        if (currentMain < mainAtRequestTime) {
+          userToUpdate.balance = mainAtRequestTime; // restore main
+        }
+
+        // Always restore compound
+        userToUpdate.quantify = (userToUpdate.quantify || 0) + requestedAmount;
+
         await userToUpdate.save();
-        
-        // console.log('❌ Withdrawal Rejected:');
-        // console.log('   Restored Balance:', userToUpdate.balance.toFixed(2));
-        // console.log('   Updated user.quantify:', userToUpdate.quantify.toFixed(2));
       }
+
     } else {
       return res.status(400).json({ error: 'Invalid action' });
     }
     
-    // Update admin processing info
     request.processedBy = {
       adminId: adminUser._id,
       adminName: adminUser.name,
@@ -387,10 +385,9 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Get all withdrawals (Admin only)
+// Get all withdrawals (Admin only - JWT_ADMIN_SECRET route)
 router.get('/all', authenticateToken, async (req, res) => {
   try {
-    // Verify admin token
     const adminToken = req.headers.authorization?.split(' ')[1];
     if (!adminToken) {
       return res.status(401).json({ error: 'Token required' });

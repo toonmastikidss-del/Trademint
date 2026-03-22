@@ -1,37 +1,25 @@
-/**
- * Balance Change Detection System
- * Detects deposits and withdrawals in real-time across all pages
- * Similar to Quantify page's balance change detection
- */
 
 import axios from 'axios';
 
-// Use environment variable or fallback to production URL
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://trademint-server-backend.onrender.com';
 
-// Store last known balance to detect changes
 let lastKnownBalance = null;
 let lastKnownQuantify = null;
 
-// ✅ Safe localStorage parser — har jagah yahi use karo
 const getSavedUser = () => {
   try {
     const str = localStorage.getItem('user');
     if (!str || str === 'undefined' || str === 'null') return null;
     return JSON.parse(str);
   } catch (e) {
-    localStorage.removeItem('user'); // corrupt data clear karo
+    localStorage.removeItem('user'); 
     return null;
   }
 };
 
-/**
- * Initialize balance change detection
- * Call this once when app starts
- */
 export const initializeBalanceDetection = () => {
-  // Load initial balance
-  const savedUser = getSavedUser(); // ✅ Fixed
+ 
+  const savedUser = getSavedUser(); 
   if (savedUser) {
     lastKnownBalance = savedUser.balance || 0;
     lastKnownQuantify = savedUser.quantify || 0;
@@ -43,10 +31,7 @@ export const initializeBalanceDetection = () => {
   });
 };
 
-/**
- * Check for balance changes and update if needed
- * Call this periodically or after transactions
- */
+
 export const checkBalanceChange = async () => {
   try {
     const token = localStorage.getItem('token');
