@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 
 const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://trademint-server-backend.onrender.com';
@@ -12,90 +11,112 @@ const getSavedUser = () => {
     if (!str || str === 'undefined' || str === 'null') return null;
     return JSON.parse(str);
   } catch (e) {
-    localStorage.removeItem('user'); 
+    localStorage.removeItem('user');
     return null;
   }
 };
 
-export const initializeBalanceDetection = () => {
- 
-  const savedUser = getSavedUser(); 
-  if (savedUser) {
-    lastKnownBalance = savedUser.balance || 0;
-    lastKnownQuantify = savedUser.quantify || 0;
+/**
+ * Initialize balance detection with fresh server data
+ */
+export const initializeBalanceDetection = async () => {
+  try {
+    const token = localStorage.getItem('token');
+    const savedUser = getSavedUser();
+
+    if (!token || !savedUser) return;
+
+    // ✅ FIX: Fresh server data fetch on init (stale localStorage use nahi hoga)
+    const userResponse = await axios.get(`${API_BASE_URL}/api/auth/user`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    const user = userResponse.data.user;
+    lastKnownBalance = user.balance || 0;
+    lastKnownQuantify = user.quantify || 0;
+
+    console.log('🔍 Balance detection initialized (fresh from server):', {
+      lastKnownBalance,
+      lastKnownQuantify
+    });
+  } catch (error) {
+    // Fallback to localStorage if server unreachable
+    console.warn('⚠️ Server unreachable during init, falling back to localStorage');
+    const savedUser = getSavedUser();
+    if (savedUser) {
+      lastKnownBalance = savedUser.balance || 0;
+      lastKnownQuantify = savedUser.quantify || 0;
+    }
+
+    console.log('🔍 Balance detection initialized (from localStorage fallback):', {
+      lastKnownBalance,
+      lastKnownQuantify
+    });
   }
-  
-  console.log('🔍 Balance detection initialized:', { 
-    lastKnownBalance, 
-    lastKnownQuantify 
-  });
 };
 
-
+/**
+ * Check if balance has changed since last known value
+ */
 export const checkBalanceChange = async () => {
   try {
     const token = localStorage.getItem('token');
-    const savedUser = getSavedUser(); // ✅ Fixed
-    
+    const savedUser = getSavedUser();
+
     if (!token || !savedUser) {
       return { detected: false };
     }
-    
+
     // Fetch fresh user data
     const userResponse = await axios.get(`${API_BASE_URL}/api/auth/user`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    
+
     const user = userResponse.data.user;
     const currentBalance = user.balance || 0;
     const currentQuantify = user.quantify || 0;
-    
+
     // Check if balance changed
     const balanceChanged = currentBalance !== lastKnownBalance;
     const quantifyChanged = currentQuantify !== lastKnownQuantify;
-    
+
     if (balanceChanged || quantifyChanged) {
-      // console.log('💰 BALANCE CHANGE DETECTED!');
-      // console.log('Old Balance:', lastKnownBalance);
-      // console.log('New Balance:', currentBalance);
-      // console.log('Difference:', (currentBalance - (lastKnownBalance || 0)).toFixed(2));
-      
-      if (quantifyChanged) {
-        // console.log('Old Quantify:', lastKnownQuantify);
-        // console.log('New Quantify:', currentQuantify);
-      }
-      
+
+      // ✅ FIX: Pehle old values alag variable mein save karo
+      const oldBalance = lastKnownBalance;
+      const oldQuantify = lastKnownQuantify;
+
       // ✅ Safe save — sirf valid object hi save karo
       if (user && typeof user === 'object') {
         localStorage.setItem('user', JSON.stringify(user));
       }
-      
-      // Dispatch custom event for other components to listen
+
+      // ✅ FIX: Dispatch event PEHLE karo, update BAAD mein — correct old values jayenge
       window.dispatchEvent(new CustomEvent('balance-updated', {
         detail: {
-          oldBalance: lastKnownBalance,
+          oldBalance,           // ✅ Sahi purani value
           newBalance: currentBalance,
-          oldQuantify: lastKnownQuantify,
+          oldQuantify,          // ✅ Sahi purani value
           newQuantify: currentQuantify,
           balanceChanged,
           quantifyChanged,
           user
         }
       }));
-      
-      // Update last known values
+
+      // ✅ FIX: lastKnown values event dispatch ke BAAD update karo
       lastKnownBalance = currentBalance;
       lastKnownQuantify = currentQuantify;
-      
+
       return {
         detected: true,
-        oldBalance: lastKnownBalance,
+        oldBalance,             // ✅ Sahi purani value return hogi
         newBalance: currentBalance,
-        oldQuantify: lastKnownQuantify,
+        oldQuantify,
         newQuantify: currentQuantify
       };
     }
-    
+
     return { detected: false };
   } catch (error) {
     console.error('❌ Error checking balance change:', error);
@@ -109,28 +130,32 @@ export const checkBalanceChange = async () => {
 export const forceRefreshUserData = async () => {
   try {
     const token = localStorage.getItem('token');
-    const savedUser = getSavedUser(); // ✅ Fixed
-    
+    const savedUser = getSavedUser();
+
     if (!token || !savedUser) {
       return null;
     }
-    
+
     const userResponse = await axios.get(`${API_BASE_URL}/api/auth/user`, {
       headers: { Authorization: `Bearer ${token}` }
     });
-    
+
     const user = userResponse.data.user;
 
     // ✅ Safe save
     if (user && typeof user === 'object') {
       localStorage.setItem('user', JSON.stringify(user));
     }
-    
+
     // Update last known values without triggering change event
     lastKnownBalance = user.balance || 0;
     lastKnownQuantify = user.quantify || 0;
-    
-    // console.log('✅ Manual refresh completed');
+
+    console.log('✅ Manual refresh completed:', {
+      balance: lastKnownBalance,
+      quantify: lastKnownQuantify
+    });
+
     return user;
   } catch (error) {
     console.error('❌ Error refreshing user data:', error);
@@ -144,7 +169,7 @@ export const forceRefreshUserData = async () => {
 export const enableCrossTabSync = () => {
   window.addEventListener('storage', (event) => {
     if (event.key === 'user') {
-      // console.log('🔄 Cross-tab balance sync detected');
+      console.log('🔄 Cross-tab balance sync detected');
       checkBalanceChange();
     }
   });

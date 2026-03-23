@@ -64,10 +64,10 @@ router.post('/login', async (req, res) => {
       await user.save();
     }
 
-    // Generate JWT token using the user's ID
+    // Generate JWT token using the ADMIN's ID (not user ID)
     const token = jwt.sign(
       { 
-        id: user._id,
+        id: admin._id,  // ✅ Use admin._id directly
         username: admin.username,
         role: admin.role 
       },

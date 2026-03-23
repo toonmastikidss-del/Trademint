@@ -92,9 +92,12 @@ const QRManagement = ({ theme, isDarkMode }) => {
     formDataObj.append('paymentMethod', formData.paymentMethod);
     formDataObj.append('upiId', formData.upiId);
     
+    // Get admin data from localStorage
     const adminData = JSON.parse(localStorage.getItem('adminData'));
     console.log('Admin data from localStorage:', adminData);
-    const adminId = adminData?.admin?._id || adminData?._id || adminData?.id;
+    
+    // Use the ID from adminData (this is the correct admin ID)
+    const adminId = adminData?.id || adminData?._id || adminData?.admin?._id;
     console.log('Extracted adminId:', adminId);
     
     if (!adminId) {
@@ -114,6 +117,8 @@ const QRManagement = ({ theme, isDarkMode }) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
       console.log('Sending request to server with token:', adminToken ? 'Token present' : 'No token');
+      
+      // Make the API call
       const response = await axios.post(`${API_CONFIG.BASE_URL}/api/qr/qrcodes/upload`, formDataObj, {
         headers: { 
           'Content-Type': 'multipart/form-data',
@@ -132,6 +137,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
       return true;
     } catch (error) {
       console.error('Error uploading file:', error);
+      console.error('Response data:', error.response?.data);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to upload QR code';
       showAlert(errorMessage, 'error');
       return false;

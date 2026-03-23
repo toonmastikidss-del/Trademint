@@ -7,7 +7,6 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const router = express.Router();
 
-// ✅ Middleware — Token se admin verify karo, body me adminId ki zaroorat nahi
 const verifyAdmin = async (req, res, next) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
@@ -16,9 +15,32 @@ const verifyAdmin = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'admin_secret_key');
-    const admin = await Admin.findById(decoded.id);
+    console.log('Decoded token:', decoded);
+    
+    // For multipart/form-data requests (like file upload), adminId can come from body
+    // For JSON requests, we rely on token
+    let admin = null;
+    
+    // First, try to find admin by adminId from request body (for uploads)
+    if (req.body && req.body.adminId) {
+      console.log('Trying to find admin by adminId from body:', req.body.adminId);
+      admin = await Admin.findById(req.body.adminId);
+    }
+    
+    // If not found or not provided, try decoded.id from token
+    if (!admin && decoded.id) {
+      console.log('Trying to find admin by decoded.id:', decoded.id);
+      admin = await Admin.findById(decoded.id);
+    }
+    
+    // If still not found, try finding by username from token
+    if (!admin && decoded.username) {
+      console.log('Trying to find admin by decoded.username:', decoded.username);
+      admin = await Admin.findOne({ username: decoded.username });
+    }
 
     if (!admin) {
+      console.error('Admin not found. Decoded:', decoded, 'Body adminId:', req.body?.adminId);
       return res.status(404).json({ message: 'Admin not found' });
     }
 
@@ -29,6 +51,7 @@ const verifyAdmin = async (req, res, next) => {
     req.admin = admin; // ✅ Admin object attach kar diya
     next();
   } catch (err) {
+    console.error('Verify admin error:', err);
     return res.status(401).json({ message: 'Invalid or expired token' });
   }
 };
@@ -110,11 +133,77 @@ router.get('/qrcodes/:paymentMethod', async (req, res) => {
   }
 });
 
-// ✅ POST upload QR code — verifyAdmin middleware, adminId body me nahi chahiye ab
-router.post('/qrcodes/upload', verifyAdmin, upload.single('qrImage'), async (req, res) => {
-  // console.log('Upload route called, admin:', req.admin?.username);
-
+// ✅ POST upload QR code — admin verification inside route
+router.post('/qrcodes/upload', upload.single('qrImage'), async (req, res) => {
+  console.log('\n=== QR Upload Request Received ===');
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  console.log('File:', req.file ? req.file.originalname : 'No file');
+  
   try {
+    // Verify admin token first
+    const token = req.header('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'admin_secret_key');
+    // console.log('Decoded JWT:', decoded);
+    
+    // Find admin - try multiple methods
+    let admin = null;
+    
+    // Method 1: Try adminId from body (sent by frontend)
+    if (req.body && req.body.adminId) {
+      // console.log('Method 1: Looking up admin by body.adminId:', req.body.adminId);
+      admin = await Admin.findById(req.body.adminId);
+      if (admin) {
+        // console.log('✅ Found admin by body.adminId:', admin.username, admin._id);
+      }
+    }
+    
+    // Method 2: Try decoded.id from token
+    if (!admin && decoded.id) {
+      // console.log('Method 2: Looking up admin by decoded.id:', decoded.id);
+      admin = await Admin.findById(decoded.id);
+      if (admin) {
+        // console.log('✅ Found admin by decoded.id:', admin.username, admin._id);
+      }
+    }
+    
+    // Method 3: Try decoded.username from token
+    if (!admin && decoded.username) {
+      // console.log('Method 3: Looking up admin by decoded.username:', decoded.username);
+      admin = await Admin.findOne({ username: decoded.username });
+      if (admin) {
+        // console.log('✅ Found admin by decoded.username:', admin.username, admin._id);
+      }
+    }
+
+    if (!admin) {
+      // console.error('\n❌ ADMIN NOT FOUND!');
+      // console.error('Decoded JWT:', decoded);
+      // console.error('Body adminId:', req.body?.adminId);
+      // console.error('All Admin IDs in DB:');
+      const allAdmins = await Admin.find().select('_id username');
+      // console.table(allAdmins.map(a => ({ _id: a._id, username: a.username })));
+      
+      return res.status(404).json({ 
+        message: 'Admin not found',
+        debug: {
+          decoded,
+          bodyAdminId: req.body?.adminId,
+          availableAdmins: allAdmins.map(a => ({ _id: a._id, username: a.username }))
+        }
+      });
+    }
+
+    if (!admin.isActive) {
+      return res.status(401).json({ message: 'Admin account is deactivated' });
+    }
+
+    // console.log('\n✅ Admin verified successfully:', admin.username, admin._id);
+
     if (!req.file) {
       return res.status(400).json({ message: 'No image file provided' });
     }
@@ -126,7 +215,7 @@ router.post('/qrcodes/upload', verifyAdmin, upload.single('qrImage'), async (req
       return res.status(400).json({ message: 'Payment method is required' });
     }
 
-    const adminId = req.admin._id; // ✅ Token se liya
+    const adminId = admin._id; // ✅ Verified admin
     const imageUrl = `/api/qr/qrcodes/image/${req.file.filename}`;
 
     const updatedQRCode = await QRCode.findOneAndUpdate(
@@ -144,9 +233,10 @@ router.post('/qrcodes/upload', verifyAdmin, upload.single('qrImage'), async (req
       { new: true, upsert: true, runValidators: true }
     );
 
+    // console.log('✅ QR Code uploaded successfully');
     res.json({ message: 'QR code uploaded successfully', qrCode: updatedQRCode });
   } catch (err) {
-    console.error('Error uploading QR code:', err);
+    // console.error('Error uploading QR code:', err);
     if (req.file && req.file.path) {
       try { fs.unlinkSync(req.file.path); } catch (e) {}
     }
@@ -182,7 +272,7 @@ router.post('/qrcodes/update', verifyAdmin, async (req, res) => {
 
     res.json({ message: 'QR code updated successfully', qrCode: updatedQRCode });
   } catch (err) {
-    console.error('Error updating QR code:', err);
+    // console.error('Error updating QR code:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
@@ -207,7 +297,7 @@ router.post('/qrcodes/toggle-status', verifyAdmin, async (req, res) => {
       qrCode
     });
   } catch (err) {
-    console.error('Error toggling QR code status:', err);
+    // console.error('Error toggling QR code status:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });

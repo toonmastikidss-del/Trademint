@@ -42,6 +42,7 @@ const Withdraw = () => {
   const [showAddBank, setShowAddBank] = useState(false)
   const [withdrawalHistory, setWithdrawalHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
+  const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false)
   
   // 24-hour restriction states
   const [hasCompleted24Hours, setHasCompleted24Hours] = useState(false)
@@ -841,6 +842,7 @@ const Withdraw = () => {
               
               // Submit withdrawal request
               try {
+                setSubmittingWithdrawal(true);
                 const token = localStorage.getItem('token');
                 const response = await axios.post(`${API_CONFIG.BASE_URL}/api/withdrawal/request`, {
                   amount: parseFloat(amount),
@@ -860,6 +862,7 @@ const Withdraw = () => {
                     // Reset form after successful submission
                     setAmount('');
                     setPassword('');
+                    setSubmittingWithdrawal(false);
                     // Refresh history
                     fetchWithdrawalHistory();
                     
@@ -875,17 +878,27 @@ const Withdraw = () => {
                 const errorMessage = error.response?.data?.error || 'Failed to submit withdrawal request. Please try again.';
                 showAlert('Error', errorMessage, 'error');
                 console.error('Withdrawal error:', error);
+                setSubmittingWithdrawal(false);
               }
             }}
-            disabled={!selectedBank || !amount || !password}
+            disabled={!selectedBank || !amount || !password || submittingWithdrawal}
             className={`w-full py-5 rounded-[2rem] font-black text-sm uppercase tracking-[0.2em] shadow-2xl transition-all flex items-center justify-center space-x-3 ${
               selectedBank && amount && password 
                 ? 'bg-[#49bace] text-white hover:scale-[1.02] active:scale-95 shadow-[#49bace]/20' 
                 : 'bg-gray-700 text-gray-500 cursor-not-allowed'
             }`}
           >
-            <span>{selectedBank && amount && password ? 'Execute Withdrawal' : 'Enter Details to Withdraw'}</span>
-            <ArrowRight size={18} />
+            {submittingWithdrawal ? (
+              <>
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                <span>Processing...</span>
+              </>
+            ) : (
+              <>
+                <span>{selectedBank && amount && password ? 'Withdraw Now' : 'Withdraw Now'}</span>
+                <ArrowRight size={18} />
+              </>
+            )}
           </button>
         </div>
       </div>
