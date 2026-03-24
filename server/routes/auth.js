@@ -3,6 +3,19 @@ const router = express.Router();
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 
+// ════════════════════════════════════════════════════════════
+//  🏥 HEALTH CHECK ENDPOINT - For wake-up ping
+//  Render sleep mode se bachne ke liye
+// ════════════════════════════════════════════════════════════
+router.get('/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'OK', 
+    message: 'Server is awake and running',
+    timestamp: new Date().toISOString(),
+    timezone: 'Asia/Kolkata'
+  });
+});
+
 // Test endpoint to list users
 router.get('/test-users', async (req, res) => {
   try {
