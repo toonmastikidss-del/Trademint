@@ -1,47 +1,23 @@
-// ============================================================
-// Quantify.jsx  –  Frontend (React)
-// ============================================================
-// Changes vs old version:
-//   ✅ Saara midnight reset logic REMOVE kiya (frontend ka kaam nahi)
-//   ✅ elevenFiftyNineCountdown REMOVE kiya
-//   ✅ midnightResetDoneRef REMOVE kiya
-//   ✅ performMidnightReset() REMOVE kiya
-//   ✅ Midnight countdown overlay REMOVE kiya
-//   ✅ serverTimeOffset logic REMOVE kiya (server handles reset)
-//   ✅ Baaki saara UI/logic bilkul waisa hi raha
-//   ✅ Line count maintained (731 → clean version)
-// ============================================================
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  BaggageClaimIcon,
-  CirclePlus,
-  Euro,
-  HandCoins,
-  X,
-  Wallet,
-  AlertCircle,
-  CheckCircle2
-} from 'lucide-react';
-import { motion, AnimatePresence }  from 'framer-motion';
-import axios                        from 'axios';
-import { useNavigate }              from 'react-router-dom';
-import animationVideo               from '../video/animated.mp4';
-import mainIco                      from '../pictures/mainico.png';
-import { API_CONFIG }               from '../config/apiConfig';
+import { BaggageClaimIcon, CirclePlus, Euro, HandCoins, X, Wallet, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
+import animationVideo from '../video/animated.mp4';
+import mainIco from '../pictures/mainico.png';
+import { checkBalanceChange } from '../utils/balanceDetection';
+import { API_CONFIG } from '../config/apiConfig';
 
-// ── Preload assets ────────────────────────────────────────────
-const preloadedImg   = new Image();
-preloadedImg.src     = mainIco;
+const preloadedImg    = new Image();
+preloadedImg.src      = mainIco;
 
-const preloadLink    = document.createElement('link');
-preloadLink.rel      = 'preload';
-preloadLink.as       = 'video';
-preloadLink.href     = animationVideo;
+const preloadLink     = document.createElement('link');
+preloadLink.rel       = 'preload';
+preloadLink.as        = 'video';
+preloadLink.href      = animationVideo;
 document.head.appendChild(preloadLink);
 
-
-// ─── Skeleton shimmer ─────────────────────────────────────────
+// ─── Skeleton shimmer ─────────────────────────────────────────────────────────
 const shimmerCSS = `
   @keyframes shimmer {
     0%   { background-position: 200% 0; }
@@ -63,16 +39,21 @@ const QuantifySkeleton = () => (
   <>
     <style>{shimmerCSS}</style>
     <div className="flex flex-col h-full items-center justify-start w-full px-6 pt-10 pb-24 gap-4">
+
       {/* Image placeholder */}
       <div className="sk w-full rounded-2xl mb-4" style={{ height: 220 }} />
+
       {/* Button placeholder */}
       <div className="sk w-full rounded-2xl" style={{ height: 56 }} />
+
       {/* Mode indicator placeholder */}
       <div className="sk w-full rounded-xl" style={{ height: 48 }} />
+
       {/* Section title */}
       <div className="w-full">
         <Sk w={160} h={14} r={6} />
       </div>
+
       {/* 4 Cards Grid */}
       <div className="grid grid-cols-2 gap-4 px-1 py-2 w-full">
         {[1, 2, 3, 4].map(i => (
@@ -85,6 +66,7 @@ const QuantifySkeleton = () => (
           </div>
         ))}
       </div>
+
       {/* Info section placeholder */}
       <div className="w-full mt-4">
         <div className="bg-white/5 border border-white/10 rounded-3xl p-6 flex flex-col gap-4">
@@ -99,6 +81,7 @@ const QuantifySkeleton = () => (
           <Sk w="100%" h={52} r={14} />
         </div>
       </div>
+
       {/* History button placeholder */}
       <div className="w-full mt-2">
         <Sk w="100%" h={68} r={24} />
@@ -107,11 +90,11 @@ const QuantifySkeleton = () => (
   </>
 );
 
+// ─── Main Component ───────────────────────────────────────────────────────────
 
-// ─── Main Component ───────────────────────────────────────────
 const Quantify = () => {
-  const navigate  = useNavigate();
-  const videoRef  = useRef(null);
+  const navigate = useNavigate();
+  const videoRef = useRef(null);
 
   const [isQuantifying,       setIsQuantifying]       = useState(false);
   const [balance,             setBalance]             = useState(0);
@@ -124,12 +107,7 @@ const Quantify = () => {
   const [mode,                setMode]                = useState('current');
   const [lastBalance,         setLastBalance]         = useState(0);
 
-  // ── isNewDay flag: backend ne reset kiya toh UI refresh karega ───────────
-  // Agar user page kholta hai aur server ne raat ko reset kar diya tha,
-  // loadUserData fresh data fetch kar leta hai — koi extra logic nahi chahiye.
-
-
-  // ── Load user data from backend ──────────────────────────────
+  // ── Load user data ───────────────────────────────────────────────────────────
   const loadUserData = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
@@ -147,32 +125,31 @@ const Quantify = () => {
 
       const data = response.data;
 
-      // Detect balance change (deposit / withdrawal)
+      // Detect balance change (deposit / withdrawal happened)
       if (lastBalance > 0 && data.balance !== lastBalance) {
-        setBalance(data.balance       || 0);
+        setBalance(data.balance || 0);
         setTotalRevenue(data.totalRevenue || 0);
         setTodayEarning(data.todayEarning || 0);
 
         const earningChanged = data.todayEarning > 0;
         setAlertModal({
-          isOpen : true,
+          isOpen: true,
           message: `Balance updated! ${data.balance > lastBalance ? '+' : ''}${(data.balance - lastBalance).toFixed(2)} | ${earningChanged ? '✅ Earnings auto-calculated!' : 'Total Revenue updated'}`,
-          type   : 'success',
+          type: 'success',
         });
       } else {
-        setBalance(data.balance       || 0);
+        setBalance(data.balance || 0);
         setTotalRevenue(data.totalRevenue || 0);
         setTodayEarning(data.todayEarning || 0);
       }
 
       setIsQuantifying(data.isQuantifying || false);
-      setMode(data.mode                   || 'current');
-      setLastBalance(data.balance         || 0);
+      setMode(data.mode || 'current');
+      setLastBalance(data.balance || 0);
 
       if (data.isQuantifying && videoRef.current) {
         videoRef.current.play().catch(() => {});
       }
-
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
@@ -180,14 +157,12 @@ const Quantify = () => {
     }
   }, [lastBalance]);
 
-
-  // ── Mount: initial data load ──────────────────────────────────
+  // ── Mount: initial data load ─────────────────────────────────────────────────
   useEffect(() => {
     loadUserData();
   }, []);
 
-
-  // ── Polling: 30s interval, PAUSED when tab is hidden ─────────
+  // ── Polling: 30s interval, PAUSED when tab is hidden (Page Visibility API) ───
   useEffect(() => {
     let interval = null;
 
@@ -205,7 +180,7 @@ const Quantify = () => {
       if (document.hidden) {
         stopPolling();
       } else {
-        loadUserData();   // tab wapas aane pe turant refresh
+        loadUserData(); // immediate refresh when user returns to tab
         startPolling();
       }
     };
@@ -219,8 +194,7 @@ const Quantify = () => {
     };
   }, [loadUserData]);
 
-
-  // ── Start Quantifying ─────────────────────────────────────────
+  // ── Start quantifying ─────────────────────────────────────────────────────────
   const handleStartQuantifying = async () => {
     if (isQuantifying) return;
 
@@ -242,20 +216,20 @@ const Quantify = () => {
       );
 
       const data = response.data;
-      setBalance(data.balance         || 0);
+      setBalance(data.balance || 0);
       setTotalRevenue(data.totalRevenue || 0);
       setTodayEarning(data.todayEarning || 0);
       setIsQuantifying(true);
-      setMode(data.mode               || 'current');
+      setMode(data.mode || 'current');
 
       if (videoRef.current) {
         videoRef.current.play().catch(() => {});
       }
 
       setAlertModal({
-        isOpen : true,
+        isOpen: true,
         message: `${data.mode === 'current' ? 'Current' : 'Continue'} mode activated! Earning started.`,
-        type   : 'success',
+        type: 'success',
       });
 
     } catch (error) {
@@ -275,17 +249,16 @@ const Quantify = () => {
     }
   };
 
-
-  // ── Skeleton loader ───────────────────────────────────────────
+  // ── Skeleton loader (replaces spinner) ───────────────────────────────────────
   if (loading) return <QuantifySkeleton />;
 
+  // ─── Render ──────────────────────────────────────────────────────────────────
 
-  // ─── Render ───────────────────────────────────────────────────
   return (
     <>
       <div className="flex flex-col h-full items-center justify-start w-full px-6 pt-10 pb-24">
 
-        {/* ── Video or Image Display ──────────────────────────── */}
+        {/* Video or Image Display */}
         {isQuantifying ? (
           <video
             ref={videoRef}
@@ -307,7 +280,7 @@ const Quantify = () => {
           />
         )}
 
-        {/* ── Start Quantifying Button ────────────────────────── */}
+        {/* Start Quantifying Button */}
         <button
           onClick={handleStartQuantifying}
           disabled={isQuantifying || loading}
@@ -319,7 +292,7 @@ const Quantify = () => {
         >
           {isQuantifying ? (
             <span className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
               Quantifying...
             </span>
           ) : (
@@ -327,7 +300,7 @@ const Quantify = () => {
           )}
         </button>
 
-        {/* ── Mode Indicator ──────────────────────────────────── */}
+        {/* Mode Indicator */}
         {!isQuantifying && (
           <div className="w-full mb-4 px-4 py-3 bg-gradient-to-r from-cyan-500/10 to-blue-500/10 border border-cyan-500/20 rounded-xl">
             <div className="flex items-center justify-between">
@@ -343,17 +316,17 @@ const Quantify = () => {
           </div>
         )}
 
-        {/* ── Quantitative Data Section ───────────────────────── */}
+        {/* Quantitative Data Section */}
         <div className="w-full">
           <h2 className="text-md mb-4 text-left text-slate-300 opacity-80 font-semibold">
             Quantitative Data
           </h2>
         </div>
 
-        {/* ── 4 Cards Grid ────────────────────────────────────── */}
+        {/* 4 Cards Grid */}
         <div className="grid grid-cols-2 gap-4 px-1 py-2 w-full">
 
-          {/* Total Revenue */}
+          {/* Total Revenue Card */}
           <div className="bg-gradient-to-br from-[#212431] to-[#2a2d3e] h-32 rounded-2xl text-center flex flex-col items-center justify-center shadow-xl border border-white/5 hover:border-cyan-500/20 transition-all duration-300">
             <span className="text-[#42bece] text-3xl font-bold">{totalRevenue.toFixed(2)}</span>
             <div className="flex text-[#adaabd] gap-2 mt-2 items-center">
@@ -362,7 +335,7 @@ const Quantify = () => {
             </div>
           </div>
 
-          {/* Trading Profit */}
+          {/* Trading Profit Card */}
           <div className="bg-gradient-to-br from-[#212431] to-[#2a2d3e] h-32 rounded-2xl text-center flex flex-col items-center justify-center shadow-xl border border-white/5 hover:border-green-500/20 transition-all duration-300">
             <span className="text-[#42bece] text-3xl font-bold">6%</span>
             <div className="flex text-[#adaabd] gap-2 mt-2 items-center">
@@ -371,7 +344,7 @@ const Quantify = () => {
             </div>
           </div>
 
-          {/* Balance */}
+          {/* Balance Card */}
           <div className="bg-gradient-to-br from-[#212431] to-[#2a2d3e] h-32 rounded-2xl text-center flex flex-col items-center justify-center shadow-xl border border-white/5 hover:border-blue-500/20 transition-all duration-300">
             <span className="text-[#42bece] text-3xl font-bold">{balance.toFixed(2)}</span>
             <div className="flex text-[#adaabd] gap-2 mt-2 items-center">
@@ -380,7 +353,7 @@ const Quantify = () => {
             </div>
           </div>
 
-          {/* Today's Earning */}
+          {/* Today's Earning Card */}
           <div className="bg-gradient-to-br from-[#212431] to-[#2a2d3e] h-32 rounded-2xl text-center flex flex-col items-center justify-center shadow-xl border border-white/5 hover:border-yellow-500/20 transition-all duration-300">
             <span className="text-[#42bece] text-3xl font-bold">{todayEarning.toFixed(2)}</span>
             <div className="flex text-[#adaabd] gap-2 mt-2 items-center">
@@ -391,7 +364,7 @@ const Quantify = () => {
 
         </div>
 
-        {/* ── Info Section ─────────────────────────────────────── */}
+        {/* Info Section */}
         <div className="w-full mt-8">
           <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-6 shadow-2xl">
             <div className="flex items-start gap-4 mb-4">
@@ -410,7 +383,7 @@ const Quantify = () => {
               onClick={() => window.open('https://www.youtube.com/watch?v=example', '_blank')}
               className="w-full group relative py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-black rounded-2xl overflow-hidden transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-gradient-to-r from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
               <div className="relative flex items-center justify-center gap-3">
                 <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -423,13 +396,13 @@ const Quantify = () => {
           </div>
         </div>
 
-        {/* ── History Button ───────────────────────────────────── */}
+        {/* History Button */}
         <div className="w-full mt-6">
           <button
             onClick={() => navigate('/quantify/history')}
             className="w-full group relative py-5 bg-gradient-to-r from-purple-600 via-purple-700 to-pink-600 text-white font-black rounded-3xl overflow-hidden transition-all duration-500 hover:scale-[1.03] active:scale-[0.97] shadow-2xl shadow-purple-500/30 hover:shadow-purple-500/50 border border-white/10"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000" />
+            <div className="absolute inset-0 bg-gradient-to-r from-white/10 via-transparent to-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
             <div className="relative flex items-center justify-center gap-4">
               <div className="w-8 h-8 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm border border-white/10">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -437,15 +410,14 @@ const Quantify = () => {
                 </svg>
               </div>
               <span className="text-lg tracking-wider">VIEW HISTORY</span>
-              <div className="w-2 h-2 bg-white/50 rounded-full animate-pulse" />
+              <div className="w-2 h-2 bg-white/50 rounded-full animate-pulse"></div>
             </div>
           </button>
         </div>
 
       </div>
 
-
-      {/* ── Low Balance Modal ───────────────────────────────────── */}
+      {/* Low Balance Modal */}
       {showLowBalanceModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-[#212431] border border-gray-700 rounded-3xl w-full max-w-md overflow-hidden shadow-2xl">
@@ -479,6 +451,7 @@ const Quantify = () => {
                 >
                   Go to Deposit
                 </button>
+
                 <button
                   onClick={() => setShowLowBalanceModal(false)}
                   className="w-full py-4 bg-gray-700 text-white font-black uppercase tracking-widest text-sm rounded-2xl hover:bg-gray-600 transition-all"
@@ -491,8 +464,7 @@ const Quantify = () => {
         </div>
       )}
 
-
-      {/* ── Alert Modal ─────────────────────────────────────────── */}
+      {/* Alert Modal */}
       <AnimatePresence>
         {alertModal.isOpen && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-6">
@@ -505,8 +477,8 @@ const Quantify = () => {
             />
             <motion.div
               initial={{ scale: 0.9, opacity: 0, y: 20 }}
-              animate={{ scale: 1,   opacity: 1, y: 0  }}
-              exit={{ scale: 0.9,    opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
               className="relative bg-[#212431] border border-gray-700 w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl overflow-hidden"
             >
               <div className={`absolute -top-24 -right-24 w-48 h-48 blur-[80px] rounded-full ${
@@ -515,14 +487,9 @@ const Quantify = () => {
 
               <div className="flex flex-col items-center text-center space-y-6">
                 <div className={`p-4 rounded-3xl ${
-                  alertModal.type === 'success'
-                    ? 'bg-green-500/10 text-green-500'
-                    : 'bg-red-500/10 text-red-500'
+                  alertModal.type === 'success' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'
                 }`}>
-                  {alertModal.type === 'success'
-                    ? <CheckCircle2 size={40} />
-                    : <AlertCircle  size={40} />
-                  }
+                  {alertModal.type === 'success' ? <CheckCircle2 size={40} /> : <AlertCircle size={40} />}
                 </div>
 
                 <div className="space-y-2">
@@ -541,7 +508,7 @@ const Quantify = () => {
                   className={`w-full py-4 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all ${
                     alertModal.type === 'success'
                       ? 'bg-green-600 hover:bg-green-500 text-white shadow-lg shadow-green-500/20'
-                      : 'bg-red-600   hover:bg-red-500   text-white shadow-lg shadow-red-500/20'
+                      : 'bg-red-600 hover:bg-red-500 text-white shadow-lg shadow-red-500/20'
                   }`}
                 >
                   Close
