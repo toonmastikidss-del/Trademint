@@ -1,7 +1,8 @@
 
 const API_CONFIG = {
   // Use environment variable with fallback for production
-  BASE_URL: process.env.REACT_APP_API_BASE_URL || 'https://trademint-server-backend.onrender.com',
+  // BASE_URL: process.env.REACT_APP_API_BASE_URL || 'https://trademint-server-backend.onrender.com', For Render
+  BASE_URL: process.env.REACT_APP_API_BASE_URL || 'https://trademint-backend-production.up.railway.app',
   
   // Client-side timeout settings
   TIMEOUT: 30000, // 30 seconds
