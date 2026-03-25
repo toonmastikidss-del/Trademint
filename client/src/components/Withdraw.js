@@ -6,10 +6,113 @@ import {
   ChevronLeft, RefreshCw, Landmark, 
   Wallet, Info, History, ArrowRight,
   ShieldCheck, Banknote, CreditCard, Lock,
-  Plus, AlertCircle, Clock
+  Plus, AlertCircle, Clock, Loader
 } from 'lucide-react'
 import AlertModal from './WithdrawalAlertModal'
 import { API_CONFIG } from '../config/apiConfig'
+
+// ════════════════════════════════════════════════════════════
+//  💀 SKELETON LOADER COMPONENT (Same as Mine page)
+// ════════════════════════════════════════════════════════════
+const Skeleton = ({ className = '' }) => (
+  <div
+    className={`relative overflow-hidden bg-[#2a2d3e] rounded-xl ${className}`}
+  >
+    <div
+      className="absolute inset-0"
+      style={{
+        background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.06) 50%, transparent 100%)',
+        backgroundSize: '200% 100%',
+        animation: 'shimmer 1.5s infinite',
+      }}
+    />
+  </div>
+);
+
+const ShimmerStyle = () => (
+  <style>{`
+    @keyframes shimmer {
+      0%   { background-position: -200% 0; }
+      100% { background-position:  200% 0; }
+    }
+  `}</style>
+);
+
+const WithdrawSkeleton = () => (
+  <div className="bg-[#101821] min-h-screen text-white pb-32 font-sans">
+    <ShimmerStyle />
+    
+    {/* Header Skeleton */}
+    <div className="sticky top-0 z-50 bg-[#312c42] px-4 py-4 flex items-center justify-between shadow-lg">
+      <Skeleton className="w-6 h-6" />
+      <Skeleton className="w-32 h-5 rounded-lg" />
+      <Skeleton className="w-16 h-4 rounded" />
+    </div>
+
+    <div className="px-4 mt-6 space-y-6">
+      
+      {/* Balance Grid Skeleton */}
+      <div className="grid grid-cols-2 gap-4">
+        {[1, 2].map(i => (
+          <div key={i} className="bg-[#212431] border border-gray-700 p-5 rounded-[2rem] shadow-xl">
+            <div className="flex items-center space-x-2 mb-2">
+              <Skeleton className="w-3.5 h-3.5 rounded" />
+              <Skeleton className="w-20 h-2.5 rounded" />
+            </div>
+            <Skeleton className="w-24 h-6 rounded-lg" />
+          </div>
+        ))}
+      </div>
+
+      {/* Bank Selection Skeleton */}
+      <div className="bg-[#212431] border border-gray-700 rounded-[2.5rem] p-6 shadow-xl space-y-4">
+        <div className="flex items-center space-x-2 mb-2 px-2">
+          <Skeleton className="w-4 h-4 rounded" />
+          <Skeleton className="w-36 h-3 rounded" />
+        </div>
+        <Skeleton className="w-full h-14 rounded-2xl" />
+      </div>
+
+      {/* Withdraw Amount Skeleton */}
+      <div className="bg-[#212431] border border-gray-700 rounded-[2.5rem] p-6 shadow-xl space-y-4">
+        <div className="flex items-center space-x-2 mb-2 px-2">
+          <Skeleton className="w-4 h-4 rounded" />
+          <Skeleton className="w-32 h-3 rounded" />
+        </div>
+        <Skeleton className="w-full h-16 rounded-2xl" />
+        <Skeleton className="w-full h-20 rounded-xl" />
+      </div>
+
+      {/* Password Skeleton */}
+      <div className="bg-[#212431] border border-gray-700 rounded-[2.5rem] p-6 shadow-xl">
+        <div className="flex items-center space-x-2 mb-2 px-2">
+          <Skeleton className="w-4 h-4 rounded" />
+          <Skeleton className="w-28 h-3 rounded" />
+        </div>
+        <Skeleton className="w-full h-12 rounded-2xl" />
+      </div>
+
+      {/* History Skeleton */}
+      <div className="bg-[#212431] border border-gray-700 rounded-[2.5rem] p-6 shadow-xl">
+        <div className="flex items-center space-x-2 mb-4">
+          <Skeleton className="w-4 h-4 rounded" />
+          <Skeleton className="w-32 h-3 rounded" />
+        </div>
+        {[1, 2, 3].map(i => (
+          <div key={i} className="bg-[#1a1f2e] rounded-2xl p-4 border border-gray-800 mb-3">
+            <div className="flex justify-between items-center">
+              <div className="space-y-2">
+                <Skeleton className="w-20 h-4 rounded" />
+                <Skeleton className="w-32 h-3 rounded" />
+              </div>
+              <Skeleton className="w-16 h-8 rounded" />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+);
 
 const Withdraw = () => {
   const navigate = useNavigate()
@@ -43,6 +146,11 @@ const Withdraw = () => {
   const [withdrawalHistory, setWithdrawalHistory] = useState([])
   const [loadingHistory, setLoadingHistory] = useState(false)
   const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false)
+  
+  // ════════════════════════════════════════════════════════════
+  //  ⚡ LOADING STATE - Initial page load
+  // ════════════════════════════════════════════════════════════
+  const [initialLoading, setInitialLoading] = useState(true);
   
   // 24-hour restriction states
   const [hasCompleted24Hours, setHasCompleted24Hours] = useState(false)
@@ -263,20 +371,23 @@ const Withdraw = () => {
         const savedUser = JSON.parse(localStorage.getItem('user'));
         
         if (savedUser && token) {
-          // Fetch fresh user data from server
-          const userRes = await axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          // ════════════════════════════════════════════════
+          //  ⚡ OPTIMIZATION: Parallel API calls (faster loading)
+          //  Sabhi requests ek saath bhejo, result wait karo
+          // ════════════════════════════════════════════════
+          const [userRes, depositRes] = await Promise.all([
+            axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }),
+            axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => ({ data: [] })) // Error handle gracefully
+          ]);
           
           const user = userRes.data.user;
           
           // Check 24-hour restriction — called ONCE here
           await check24HourRestriction();
-          
-          // Fetch deposit history to calculate approved deposit amount
-          const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${user._id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
           
           const deposits = depositRes.data;
           const approvedAmount = deposits
@@ -313,54 +424,47 @@ const Withdraw = () => {
             // Fetch deposit history to calculate approved deposit amount
             const token = localStorage.getItem('token');
             if (token && savedUser._id) {
-              try {
-                const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-                
-                const deposits = depositRes.data;
-                const approvedAmount = deposits
-                  .filter(deposit => deposit.status === 'approved')
-                  .reduce((sum, deposit) => sum + deposit.amount, 0);
-                
-                setApprovedDepositAmount(approvedAmount);
-                
-                // Calculate total and available balances (matching mine page)
-                const calculatedTotalBalance = (savedUser.balance + approvedAmount).toFixed(2);
-                const calculatedAvailableBalance = (savedUser.balance + approvedAmount).toFixed(2);
-                
-                setTotalBalance(calculatedTotalBalance);
-                setAvailableBalance(calculatedAvailableBalance);
-                setBalance(savedUser.balance.toFixed(2));
-                
-                // Calculate total balance based on the condition: if quantify > balance, show quantify; otherwise show balance
-                const totalBalance = Math.max(savedUser.balance, savedUser.quantify || 0);
-                            
-                // Set user data from localStorage
-                setUserData({
-                  name: savedUser.name || 'MEMBER_NNGX',
-                  uid: savedUser.phone ? savedUser.phone.slice(-6) : '------',
-                  balance: savedUser.balance,
-                  total_amount: totalBalance,
-                  quantify: savedUser.quantify || 0
-                });
-                
-                // Set user join date to calculate 16-day restriction
-                setUserJoinDate(savedUser.createdAt || savedUser.createdAt);
-              } catch (depositErr) {
-                console.error('Error fetching deposit history:', depositErr);
-                handleAuthError(depositErr.response?.status);
-                
-                // Set balances using only approved deposit amount (matching mine page)
-                setTotalBalance('0.00');
-                setAvailableBalance('0.00');
-                setBalance(savedUser.balance.toFixed(2));
-              }
+              // ════════════════════════════════════════════════
+              //  ⚡ OPTIMIZATION: Parallel API calls for fallback case
+              // ════════════════════════════════════════════════
+              const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              }).catch(() => ({ data: [] }));
+              
+              const deposits = depositRes.data;
+              const approvedAmount = deposits
+                .filter(deposit => deposit.status === 'approved')
+                .reduce((sum, deposit) => sum + deposit.amount, 0);
+              
+              setApprovedDepositAmount(approvedAmount);
+              
+              // Calculate total and available balances (matching mine page)
+              const calculatedTotalBalance = (savedUser.balance + approvedAmount).toFixed(2);
+              const calculatedAvailableBalance = (savedUser.balance + approvedAmount).toFixed(2);
+              
+              setTotalBalance(calculatedTotalBalance);
+              setAvailableBalance(calculatedAvailableBalance);
+              setBalance(savedUser.balance.toFixed(2));
+              
+              // Calculate total balance based on the condition: if quantify > balance, show quantify; otherwise show balance
+              const totalBalance = Math.max(savedUser.balance, savedUser.quantify || 0);
+                          
+              // Set user data from localStorage
+              setUserData({
+                name: savedUser.name || 'MEMBER_NNGX',
+                uid: savedUser.phone ? savedUser.phone.slice(-6) : '------',
+                balance: savedUser.balance,
+                total_amount: totalBalance,
+                quantify: savedUser.quantify || 0
+              });
+              
+              // Set user join date to calculate 16-day restriction
+              setUserJoinDate(savedUser.createdAt || savedUser.createdAt);
             } else {
-              // Set balances using only approved deposit amount (matching mine page)
+              // Set default balances
               setTotalBalance('0.00');
               setAvailableBalance('0.00');
-              setBalance(savedUser.balance.toFixed(2));
+              setBalance('0.00');
             }
           } else {
             // Set default balances
@@ -377,6 +481,11 @@ const Withdraw = () => {
         setTotalBalance('0.00');
         setAvailableBalance('0.00');
         setBalance('0.00');
+      } finally {
+        // ════════════════════════════════════════════════
+        //  ⚡ LOADING COMPLETE - Show page content
+        // ════════════════════════════════════════════════
+        setInitialLoading(false);
       }
     };
     
@@ -412,7 +521,17 @@ const Withdraw = () => {
   }, []);
 
   return (
-    <div className="bg-[#101821] min-h-screen text-white pb-32 font-sans">
+    <>
+      {/* ════════════════════════════════════════════════
+          ⚡ SKELETON LOADER - Jab tak data load ho
+          ════════════════════════════════════════════════ */}
+      {initialLoading && <WithdrawSkeleton />}
+      
+      {/* ════════════════════════════════════════════════
+          📄 PAGE CONTENT - Jab tak data load ho jaye
+          ════════════════════════════════════════════════ */}
+      {!initialLoading && (
+        <div className="bg-[#101821] min-h-screen text-white pb-32 font-sans">
       {/* Header */}
       <div className="sticky top-0 z-50 bg-[#312c42] px-4 py-4 flex items-center justify-between shadow-lg">
         <button onClick={() => navigate('/mine')} className="p-1">
@@ -913,6 +1032,8 @@ const Withdraw = () => {
         onConfirm={alertModal.onConfirm}
       />
     </div>
+  )}
+    </>
   )
 }
 

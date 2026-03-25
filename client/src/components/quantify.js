@@ -100,7 +100,8 @@ const Quantify = () => {
   const [balance,             setBalance]             = useState(0);
   const [todayEarning,        setTodayEarning]        = useState(0);
   const [totalRevenue,        setTotalRevenue]        = useState(0);
-  const [loading,             setLoading]             = useState(true);
+  const [initialLoading,      setInitialLoading]      = useState(true);
+  const [actionLoading,       setActionLoading]       = useState(false);
   const [showLowBalanceModal, setShowLowBalanceModal] = useState(false);
   const [lowBalanceError,     setLowBalanceError]     = useState('');
   const [alertModal,          setAlertModal]          = useState({ isOpen: false, message: '', type: '' });
@@ -153,7 +154,7 @@ const Quantify = () => {
     } catch (error) {
       console.error('Error loading user data:', error);
     } finally {
-      setLoading(false);
+      setInitialLoading(false);
     }
   }, [lastBalance]);
 
@@ -207,7 +208,7 @@ const Quantify = () => {
         return;
       }
 
-      setLoading(true);
+      setActionLoading(true);
 
       const response = await axios.post(
         `${API_CONFIG.BASE_URL}/api/quantify/start`,
@@ -245,18 +246,21 @@ const Quantify = () => {
       }
       console.error('Error starting quantifying:', error);
     } finally {
-      setLoading(false);
+      setActionLoading(false);
     }
   };
 
   // ── Skeleton loader (replaces spinner) ───────────────────────────────────────
-  if (loading) return <QuantifySkeleton />;
+  // Note: Removed - now using conditional rendering in return statement
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <>
-      <div className="flex flex-col h-full items-center justify-start w-full px-6 pt-10 pb-24">
+      {initialLoading ? (
+        <QuantifySkeleton />
+      ) : (
+        <div className="flex flex-col h-full items-center justify-start w-full px-6 pt-10 pb-24">
 
         {/* Video or Image Display */}
         {isQuantifying ? (
@@ -283,7 +287,7 @@ const Quantify = () => {
         {/* Start Quantifying Button */}
         <button
           onClick={handleStartQuantifying}
-          disabled={isQuantifying || loading}
+          disabled={isQuantifying || actionLoading}
           className={`px-6 py-4 w-full text-white rounded-2xl shadow-lg mb-6 transition-all duration-300 transform ${
             isQuantifying
               ? 'bg-gray-700 opacity-60 cursor-not-allowed scale-100'
@@ -416,6 +420,7 @@ const Quantify = () => {
         </div>
 
       </div>
+      )}
 
       {/* Low Balance Modal */}
       {showLowBalanceModal && (

@@ -179,11 +179,23 @@ const Mine = () => {
         const token = localStorage.getItem('token');
 
         if (savedUser && token) {
-          const res = await axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          // ════════════════════════════════════════════════
+          //  ⚡ OPTIMIZATION: Parallel API calls (faster loading)
+          //  Sabhi requests ek saath bhejo, result wait karo
+          // ════════════════════════════════════════════════
+          const [userRes, depositRes, quantifyRes] = await Promise.all([
+            axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }),
+            axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => ({ data: [] })), // Error handle gracefully
+            axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => ({ data: { totalRevenue: 0, todayEarning: 0 } })) // Error handle gracefully
+          ]);
 
-          const user = res.data?.user || savedUser;
+          const user = userRes.data?.user || savedUser;
 
           let calculatedUid = '------';
           if (user.phone) {
@@ -209,10 +221,6 @@ const Mine = () => {
             localStorage.setItem('user', JSON.stringify(user));
           }
 
-          const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${user._id}`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-
           const deposits = depositRes.data;
           const approvedAmount = deposits
             .filter(deposit => deposit.status === 'approved')
@@ -220,16 +228,10 @@ const Mine = () => {
 
           setApprovedDepositAmount(approvedAmount);
 
-          try {
-            const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${user._id}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-
-            setQuantifyData({
-              totalRevenue: quantifyRes.data.totalRevenue,
-              todayEarning: quantifyRes.data.todayEarning
-            });
-          } catch (quantifyErr) {}
+          setQuantifyData({
+            totalRevenue: quantifyRes.data.totalRevenue,
+            todayEarning: quantifyRes.data.todayEarning
+          });
         } else {
           let calculatedUid = '775383';
           if (savedUser?.phone) {
@@ -250,29 +252,29 @@ const Mine = () => {
 
           const token = localStorage.getItem('token');
           if (token && savedUser?._id) {
-            try {
-              const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
+            // ════════════════════════════════════════════════
+            //  ⚡ OPTIMIZATION: Parallel API calls for fallback case
+            // ════════════════════════════════════════════════
+            const [depositRes, quantifyRes] = await Promise.all([
+              axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
                 headers: { Authorization: `Bearer ${token}` }
-              });
+              }).catch(() => ({ data: [] })),
+              axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
+                headers: { Authorization: `Bearer ${token}` }
+              }).catch(() => ({ data: { totalRevenue: 0, todayEarning: 0 } }))
+            ]);
 
-              const deposits = depositRes.data;
-              const approvedAmount = deposits
-                .filter(deposit => deposit.status === 'approved')
-                .reduce((sum, deposit) => sum + deposit.amount, 0);
+            const deposits = depositRes.data;
+            const approvedAmount = deposits
+              .filter(deposit => deposit.status === 'approved')
+              .reduce((sum, deposit) => sum + deposit.amount, 0);
 
-              setApprovedDepositAmount(approvedAmount);
+            setApprovedDepositAmount(approvedAmount);
 
-              try {
-                const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-
-                setQuantifyData({
-                  totalRevenue: quantifyRes.data.totalRevenue,
-                  todayEarning: quantifyRes.data.todayEarning
-                });
-              } catch (quantifyErr) {}
-            } catch (depositErr) {}
+            setQuantifyData({
+              totalRevenue: quantifyRes.data.totalRevenue,
+              todayEarning: quantifyRes.data.todayEarning
+            });
           }
         }
       } catch (err) {
@@ -300,29 +302,29 @@ const Mine = () => {
 
         const token = localStorage.getItem('token');
         if (token && savedUser?._id) {
-          try {
-            const depositRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
+          // ════════════════════════════════════════════════
+          //  ⚡ OPTIMIZATION: Parallel API calls for error recovery
+          // ════════════════════════════════════════════════
+          const [depositRes, quantifyRes] = await Promise.all([
+            axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
               headers: { Authorization: `Bearer ${token}` }
-            });
+            }).catch(() => ({ data: [] })),
+            axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => ({ data: { totalRevenue: 0, todayEarning: 0 } }))
+          ]);
 
-            const deposits = depositRes.data;
-            const approvedAmount = deposits
-              .filter(deposit => deposit.status === 'approved')
-              .reduce((sum, deposit) => sum + deposit.amount, 0);
+          const deposits = depositRes.data;
+          const approvedAmount = deposits
+            .filter(deposit => deposit.status === 'approved')
+            .reduce((sum, deposit) => sum + deposit.amount, 0);
 
-            setApprovedDepositAmount(approvedAmount);
+          setApprovedDepositAmount(approvedAmount);
 
-            try {
-              const quantifyRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
-                headers: { Authorization: `Bearer ${token}` }
-              });
-
-              setQuantifyData({
-                totalRevenue: quantifyRes.data.totalRevenue,
-                todayEarning: quantifyRes.data.todayEarning
-              });
-            } catch (quantifyErr) {}
-          } catch (depositErr) {}
+          setQuantifyData({
+            totalRevenue: quantifyRes.data.totalRevenue,
+            todayEarning: quantifyRes.data.todayEarning
+          });
         }
       } finally {
         setLoading(false);

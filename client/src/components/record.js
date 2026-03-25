@@ -72,7 +72,7 @@ const SkeletonCard = () => (
 
 const Record = () => {
   const [selected, setSelected] = useState('All');
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [cacheUsed, setCacheUsed] = useState(false);
@@ -86,12 +86,12 @@ const Record = () => {
     if (!forceRefresh && isCacheValid()) {
       setTransactions(_cachedData);
       setCacheUsed(true);
-      setLoading(false);
+      setInitialLoading(false);
       return;
     }
 
     setCacheUsed(false);
-    setLoading(true);
+    setInitialLoading(true);
     try {
       const token = localStorage.getItem('token');
       const savedUserStr = localStorage.getItem('user');
@@ -320,13 +320,13 @@ const Record = () => {
       // Save to cache
       writeCache(allTransactions);
       setTransactions(allTransactions);
-      
+      setInitialLoading(false);
     } catch (error) {
       // console.error('Error fetching transaction data:', error);
       // Fallback to demo data on error
       setTransactions(getDemoData());
+      setInitialLoading(false);
     } finally {
-      setLoading(false);
       setRefreshing(false);
     }
   }, []);
@@ -404,7 +404,7 @@ const Record = () => {
         </div>
 
         {/* Cache hint */}
-        {cacheUsed && !loading && (
+        {cacheUsed && !initialLoading && (
           <div className="flex items-center justify-between mb-4 px-1">
             <span className="text-[10px] text-gray-600">Showing cached data</span>
             <button onClick={handleRefresh} className="text-[10px] text-[#49bace] font-semibold">
@@ -414,7 +414,7 @@ const Record = () => {
         )}
 
         {/* ── SKELETON replaces spinner ── */}
-        {loading ? (
+        {initialLoading ? (
           <SkeletonCard />
         ) : (
           <div className="space-y-4">
