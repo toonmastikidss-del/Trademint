@@ -5,11 +5,7 @@ const API_CONFIG = {
   BASE_URL: process.env.REACT_APP_API_BASE_URL || 'https://trademint-backend-production.up.railway.app',
   
   // Client-side timeout settings
-  TIMEOUT: 60000, // 60 seconds (increased for Render wake-up delay)
-  
-  // Retry configuration
-  MAX_RETRIES: 3,
-  RETRY_DELAY: 2000, // 2 seconds between retries
+  TIMEOUT: 30000, // 30 seconds
   
   // API endpoints (relative paths - will be appended to BASE_URL)
   ENDPOINTS: {
