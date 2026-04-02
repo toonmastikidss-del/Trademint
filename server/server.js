@@ -308,3 +308,34 @@ cron.schedule('0 0 * * *', async () => {
 });
 
 console.log('✅ Midnight reset cron job scheduled (runs at 12:00 AM IST daily)');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ✅ 404 HANDLER - Return JSON for undefined routes
+// ─────────────────────────────────────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.status(404).json({
+    error: 'Route not found',
+    message: `Cannot ${req.method} ${req.originalUrl}`,
+    status: 404
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ✅ GLOBAL ERROR HANDLER - Always return JSON
+// ─────────────────────────────────────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  console.error('❌ Global Error Handler:', err.message);
+  console.error('Stack:', err.stack);
+  
+  // Log error details in development
+  if (process.env.NODE_ENV === 'development') {
+    console.error('Error details:', err);
+  }
+  
+  res.status(err.status || 500).json({
+    error: err.name === 'ValidationError' ? 'Validation Error' : 'Internal Server Error',
+    message: err.message || 'Something went wrong',
+    status: err.status || 500,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});

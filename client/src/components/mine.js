@@ -174,6 +174,7 @@ const Mine = () => {
             ? JSON.parse(savedUserStr)
             : null;
         } catch (e) {
+          console.error('Error parsing user from localStorage:', e);
           localStorage.removeItem('user');
         }
         const token = localStorage.getItem('token');
@@ -185,13 +186,19 @@ const Mine = () => {
           // ════════════════════════════════════════════════
           const [userRes, depositRes, quantifyRes] = await Promise.all([
             axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
-              headers: { Authorization: `Bearer ${token}` }
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: API_CONFIG.TIMEOUT
+            }).catch(err => {
+              console.error('❌ User API Error:', err.response?.data || err.message);
+              throw err;
             }),
             axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
-              headers: { Authorization: `Bearer ${token}` }
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: API_CONFIG.TIMEOUT
             }).catch(() => ({ data: [] })), // Error handle gracefully
             axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
-              headers: { Authorization: `Bearer ${token}` }
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: API_CONFIG.TIMEOUT
             }).catch(() => ({ data: { totalRevenue: 0, todayEarning: 0 } })) // Error handle gracefully
           ]);
 
@@ -257,10 +264,12 @@ const Mine = () => {
             // ════════════════════════════════════════════════
             const [depositRes, quantifyRes] = await Promise.all([
               axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
+                timeout: API_CONFIG.TIMEOUT
               }).catch(() => ({ data: [] })),
               axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
-                headers: { Authorization: `Bearer ${token}` }
+                headers: { Authorization: `Bearer ${token}` },
+                timeout: API_CONFIG.TIMEOUT
               }).catch(() => ({ data: { totalRevenue: 0, todayEarning: 0 } }))
             ]);
 
@@ -278,6 +287,7 @@ const Mine = () => {
           }
         }
       } catch (err) {
+        console.error('❌ Error fetching user data:', err.response?.data || err.message);
         const savedUserStr = localStorage.getItem('user');
         const savedUser = savedUserStr ? JSON.parse(savedUserStr) : {};
         let calculatedUid = '775383';
@@ -307,10 +317,12 @@ const Mine = () => {
           // ════════════════════════════════════════════════
           const [depositRes, quantifyRes] = await Promise.all([
             axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
-              headers: { Authorization: `Bearer ${token}` }
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: API_CONFIG.TIMEOUT
             }).catch(() => ({ data: [] })),
             axios.get(`${API_CONFIG.BASE_URL}/api/quantify/user/${savedUser._id}`, {
-              headers: { Authorization: `Bearer ${token}` }
+              headers: { Authorization: `Bearer ${token}` },
+              timeout: API_CONFIG.TIMEOUT
             }).catch(() => ({ data: { totalRevenue: 0, todayEarning: 0 } }))
           ]);
 

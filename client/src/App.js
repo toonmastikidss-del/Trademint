@@ -39,6 +39,7 @@ import ReferAndEarn from './components/ReferAndEarn';
 import PlatformInfo from './components/platform';
 import AppDownload from './components/AppDownload';
 import EarningPotential from './components/earningPotential';
+import { keepBackendAlive } from './utils/backendKeepAlive';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -52,6 +53,11 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   const location = useLocation();
   const isAdminPath = location.pathname.startsWith('/c/');
+  
+  // Initialize backend keep-alive service (for Render free tier)
+  React.useEffect(() => {
+    keepBackendAlive();
+  }, []);
   
   const hideNavBar = location.pathname === '/login' || 
   location.pathname === '/register' || 
