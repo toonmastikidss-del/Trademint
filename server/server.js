@@ -21,7 +21,7 @@ if (!process.env.MONGO_URI) {
   process.exit(1);
 }
 
-if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'your_jwt_secret_key_change_this_in_production') {
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === '2c7f664f4dd5cbfd3c1b78594640f131ef36085ec4794f4e387d4628dd0500f3') {
   console.warn('⚠️  WARNING: JWT_SECRET is using default value. Change this in production!');
 }
 
