@@ -139,7 +139,6 @@ const Withdraw = () => {
   const [approvedDepositAmount, setApprovedDepositAmount] = useState(0);
   const [totalBalance, setTotalBalance] = useState('0.00');
   const [availableBalance, setAvailableBalance] = useState('0.00');
-  const [previousDayEarning, setPreviousDayEarning] = useState(0);
   const [selectedBank, setSelectedBank] = useState('')
   const [userBanks, setUserBanks] = useState([])
   const [loadingBanks, setLoadingBanks] = useState(true)
@@ -227,7 +226,7 @@ const Withdraw = () => {
   }, []);
 
   const stats = [
-    { label: 'Total Balance', value: `₹${(parseFloat(userData.balance || 0) + parseFloat(approvedDepositAmount || 0) + parseFloat(previousDayEarning || 0)).toFixed(2)}`, icon: Wallet, color: 'text-blue-400' },
+    { label: 'Total Balance', value: `₹${userData.total_amount?.toFixed(2) || '0.00'}`, icon: Wallet, color: 'text-blue-400' },
     { label: 'Available', value: `₹${userData.balance?.toFixed(2) || '0.00'}`, icon: CreditCard, color: 'text-[#49bace]' },
   ];
   
@@ -372,20 +371,25 @@ const Withdraw = () => {
         const savedUser = JSON.parse(localStorage.getItem('user'));
         
         if (savedUser && token) {
+          // Calculate yesterday's date for QuantifyHistory
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          yesterday.setHours(0, 0, 0, 0); // Start of yesterday
+          
           // ════════════════════════════════════════════════
           //  ⚡ OPTIMIZATION: Parallel API calls (faster loading)
           //  Sabhi requests ek saath bhejo, result wait karo
           // ════════════════════════════════════════════════
-          const [userRes, depositRes, previousDayRes] = await Promise.all([
+          const [userRes, depositRes, historyRes] = await Promise.all([
             axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
               headers: { Authorization: `Bearer ${token}` }
             }),
             axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
               headers: { Authorization: `Bearer ${token}` }
             }).catch(() => ({ data: [] })), // Error handle gracefully
-            axios.get(`${API_CONFIG.BASE_URL}/api/quantify/previous-day-earning`, {
+            axios.get(`${API_CONFIG.BASE_URL}/api/quantify/history?userId=${savedUser._id}&date=${yesterday.toISOString()}`, {
               headers: { Authorization: `Bearer ${token}` }
-            }).catch(() => ({ data: { previousDayEarning: 0 } })) // Fallback to 0
+            }).catch(() => ({ data: null })) // Error handle gracefully
           ]);
           
           const user = userRes.data.user;
@@ -398,30 +402,28 @@ const Withdraw = () => {
             .filter(deposit => deposit.status === 'approved')
             .reduce((sum, deposit) => sum + deposit.amount, 0);
           
-          // Get previous day's earning
-          const prevDayEarning = previousDayRes.data?.previousDayEarning || 0;
-          setPreviousDayEarning(prevDayEarning);
-          
           setApprovedDepositAmount(approvedAmount);
           
-          // Calculate total balance: Available Balance + Approved Deposits + Previous Day's Earning
-          const calculatedTotalBalance = (user.balance + approvedAmount + prevDayEarning).toFixed(2);
+          // Get yesterday's quantify revenue from history
+          const yesterdayRevenue = historyRes.data?.endingTotalRevenue || 0;
+          console.log('📊 Yesterday\'s quantify revenue:', yesterdayRevenue);
+          
+          // Calculate total and available balances
+          // Total Balance = Available Balance + Yesterday's Quantify Revenue (NOT today's)
+          const calculatedTotalBalance = (user.balance + approvedAmount + yesterdayRevenue).toFixed(2);
           const calculatedAvailableBalance = (user.balance + approvedAmount).toFixed(2);
           
           setTotalBalance(calculatedTotalBalance);
           setAvailableBalance(calculatedAvailableBalance);
           setBalance(user.balance.toFixed(2)); // Keep the original balance for internal calculations if needed
           
-          // Calculate total balance based on the condition: if quantify > balance, show quantify; otherwise show balance
-          const totalBalance = Math.max(user.balance, user.quantify || 0);
-          
-          // Set user data
+          // Set user data with yesterday's revenue (not today's)
           setUserData({
             name: user.name || 'MEMBER_NNGX',
             uid: user.phone ? user.phone.slice(-6) : '------',
             balance: user.balance,
-            total_amount: totalBalance,
-            quantify: user.quantify || 0
+            total_amount: parseFloat(calculatedTotalBalance),
+            quantify: yesterdayRevenue // Yesterday's revenue, not today's
           });
           
           // Set user join date to calculate 16-day restriction
@@ -444,22 +446,10 @@ const Withdraw = () => {
                 .filter(deposit => deposit.status === 'approved')
                 .reduce((sum, deposit) => sum + deposit.amount, 0);
               
-              // Get previous day's earning (try to fetch, fallback to 0)
-              let prevDayEarning = 0;
-              try {
-                const prevDayRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/previous-day-earning`, {
-                  headers: { Authorization: `Bearer ${token}` }
-                });
-                prevDayEarning = prevDayRes.data?.previousDayEarning || 0;
-              } catch (err) {
-                console.error('Error fetching previous day earning:', err);
-              }
-              
-              setPreviousDayEarning(prevDayEarning);
               setApprovedDepositAmount(approvedAmount);
               
-              // Calculate total balance: Available Balance + Approved Deposits + Previous Day's Earning
-              const calculatedTotalBalance = (savedUser.balance + approvedAmount + prevDayEarning).toFixed(2);
+              // Calculate total and available balances (matching mine page)
+              const calculatedTotalBalance = (savedUser.balance + approvedAmount).toFixed(2);
               const calculatedAvailableBalance = (savedUser.balance + approvedAmount).toFixed(2);
               
               setTotalBalance(calculatedTotalBalance);

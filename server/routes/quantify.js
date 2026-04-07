@@ -344,7 +344,39 @@ router.get('/history', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const { page = 1, limit = 30 } = req.query;
+    const { page = 1, limit = 30, userId, date } = req.query;
+    
+    // If specific date is provided, fetch that date's history
+    if (date) {
+      const targetDate = new Date(date);
+      const startOfDay = new Date(targetDate);
+      startOfDay.setHours(0, 0, 0, 0);
+      
+      const endOfDay = new Date(targetDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      
+      const query = {
+        userId: userId || req.user.id,
+        date: {
+          $gte: startOfDay,
+          $lte: endOfDay
+        }
+      };
+      
+      console.log('🔍 Fetching quantify history for date:', date);
+      console.log('📅 Date range:', startOfDay, 'to', endOfDay);
+      
+      const history = await QuantifyHistory.findOne(query)
+        .sort({ date: -1 });
+      
+      if (!history) {
+        console.log('⚠️ No history found for date:', date);
+        return res.json(null);
+      }
+      
+      console.log('✅ Found history:', history.endingTotalRevenue);
+      return res.json(history);
+    }
     
     // If user is admin, show all history; otherwise show only their own
     const query = (user.status === 'Admin') ? {} : { userId: req.user.id };
@@ -366,46 +398,6 @@ router.get('/history', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Error fetching history:', error);
     res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Get previous day's quantify earning for withdrawal calculation
-router.get('/previous-day-earning', auth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const QuantifyHistory = require('../models/QuantifyHistory');
-    
-    // Get yesterday's date (start of day)
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    yesterday.setHours(0, 0, 0, 0);
-    
-    // Get today's start
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Find yesterday's quantify history
-    const yesterdayHistory = await QuantifyHistory.findOne({
-      userId: userId,
-      date: {
-        $gte: yesterday,
-        $lt: today
-      }
-    });
-    
-    let previousDayEarning = 0;
-    if (yesterdayHistory) {
-      previousDayEarning = yesterdayHistory.earning || 0;
-    }
-    
-    res.json({
-      success: true,
-      previousDayEarning: previousDayEarning,
-      date: yesterday
-    });
-  } catch (error) {
-    console.error('Error fetching previous day earning:', error);
-    res.status(500).json({ error: 'Server error' });
   }
 });
 
