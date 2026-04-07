@@ -369,6 +369,46 @@ router.get('/history', authenticateToken, async (req, res) => {
   }
 });
 
+// Get previous day's quantify earning for withdrawal calculation
+router.get('/previous-day-earning', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const QuantifyHistory = require('../models/QuantifyHistory');
+    
+    // Get yesterday's date (start of day)
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(0, 0, 0, 0);
+    
+    // Get today's start
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Find yesterday's quantify history
+    const yesterdayHistory = await QuantifyHistory.findOne({
+      userId: userId,
+      date: {
+        $gte: yesterday,
+        $lt: today
+      }
+    });
+    
+    let previousDayEarning = 0;
+    if (yesterdayHistory) {
+      previousDayEarning = yesterdayHistory.earning || 0;
+    }
+    
+    res.json({
+      success: true,
+      previousDayEarning: previousDayEarning,
+      date: yesterday
+    });
+  } catch (error) {
+    console.error('Error fetching previous day earning:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Check if 24 hours have passed since first quantifying
 router.get('/check-24hrs', authenticateToken, async (req, res) => {
   try {

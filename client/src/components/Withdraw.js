@@ -139,6 +139,7 @@ const Withdraw = () => {
   const [approvedDepositAmount, setApprovedDepositAmount] = useState(0);
   const [totalBalance, setTotalBalance] = useState('0.00');
   const [availableBalance, setAvailableBalance] = useState('0.00');
+  const [previousDayEarning, setPreviousDayEarning] = useState(0);
   const [selectedBank, setSelectedBank] = useState('')
   const [userBanks, setUserBanks] = useState([])
   const [loadingBanks, setLoadingBanks] = useState(true)
@@ -226,7 +227,7 @@ const Withdraw = () => {
   }, []);
 
   const stats = [
-    { label: 'Total Balance', value: `₹${userData.total_amount?.toFixed(2) || '0.00'}`, icon: Wallet, color: 'text-blue-400' },
+    { label: 'Total Balance', value: `₹${(parseFloat(userData.balance || 0) + parseFloat(approvedDepositAmount || 0) + parseFloat(previousDayEarning || 0)).toFixed(2)}`, icon: Wallet, color: 'text-blue-400' },
     { label: 'Available', value: `₹${userData.balance?.toFixed(2) || '0.00'}`, icon: CreditCard, color: 'text-[#49bace]' },
   ];
   
@@ -375,13 +376,16 @@ const Withdraw = () => {
           //  ⚡ OPTIMIZATION: Parallel API calls (faster loading)
           //  Sabhi requests ek saath bhejo, result wait karo
           // ════════════════════════════════════════════════
-          const [userRes, depositRes] = await Promise.all([
+          const [userRes, depositRes, previousDayRes] = await Promise.all([
             axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
               headers: { Authorization: `Bearer ${token}` }
             }),
             axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
               headers: { Authorization: `Bearer ${token}` }
-            }).catch(() => ({ data: [] })) // Error handle gracefully
+            }).catch(() => ({ data: [] })), // Error handle gracefully
+            axios.get(`${API_CONFIG.BASE_URL}/api/quantify/previous-day-earning`, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).catch(() => ({ data: { previousDayEarning: 0 } })) // Fallback to 0
           ]);
           
           const user = userRes.data.user;
@@ -394,10 +398,14 @@ const Withdraw = () => {
             .filter(deposit => deposit.status === 'approved')
             .reduce((sum, deposit) => sum + deposit.amount, 0);
           
+          // Get previous day's earning
+          const prevDayEarning = previousDayRes.data?.previousDayEarning || 0;
+          setPreviousDayEarning(prevDayEarning);
+          
           setApprovedDepositAmount(approvedAmount);
           
-          // Calculate total and available balances (matching mine page)
-          const calculatedTotalBalance = (user.balance + approvedAmount).toFixed(2);
+          // Calculate total balance: Available Balance + Approved Deposits + Previous Day's Earning
+          const calculatedTotalBalance = (user.balance + approvedAmount + prevDayEarning).toFixed(2);
           const calculatedAvailableBalance = (user.balance + approvedAmount).toFixed(2);
           
           setTotalBalance(calculatedTotalBalance);
@@ -436,10 +444,22 @@ const Withdraw = () => {
                 .filter(deposit => deposit.status === 'approved')
                 .reduce((sum, deposit) => sum + deposit.amount, 0);
               
+              // Get previous day's earning (try to fetch, fallback to 0)
+              let prevDayEarning = 0;
+              try {
+                const prevDayRes = await axios.get(`${API_CONFIG.BASE_URL}/api/quantify/previous-day-earning`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                prevDayEarning = prevDayRes.data?.previousDayEarning || 0;
+              } catch (err) {
+                console.error('Error fetching previous day earning:', err);
+              }
+              
+              setPreviousDayEarning(prevDayEarning);
               setApprovedDepositAmount(approvedAmount);
               
-              // Calculate total and available balances (matching mine page)
-              const calculatedTotalBalance = (savedUser.balance + approvedAmount).toFixed(2);
+              // Calculate total balance: Available Balance + Approved Deposits + Previous Day's Earning
+              const calculatedTotalBalance = (savedUser.balance + approvedAmount + prevDayEarning).toFixed(2);
               const calculatedAvailableBalance = (savedUser.balance + approvedAmount).toFixed(2);
               
               setTotalBalance(calculatedTotalBalance);
@@ -787,6 +807,7 @@ const Withdraw = () => {
           </div>
           <ul className="space-y-3">
             {[
+              "Today's quantifying total revenue will be available for withdrawal after 24 hours.",
               "Withdrawals are processed within 10-30 minutes.",
               "Ensure your bank details are correct to avoid failure.",
               "Minimum withdrawal amount is ₹100.",
