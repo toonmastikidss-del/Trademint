@@ -54,8 +54,20 @@ const limiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Lenient rate limit for QR code uploads (admin operations)
+const qrUploadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50, // Allow 50 QR upload attempts per 15 minutes
+  message: 'Too many QR upload attempts, please wait a few minutes and try again.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Apply rate limiting to all API routes
 app.use('/api/', limiter);
+
+// Override with lenient limiter for QR upload endpoint
+app.use('/api/qr/qrcodes/upload', qrUploadLimiter);
 
 // Stricter rate limit for authentication endpoints
 const authLimiter = rateLimit({

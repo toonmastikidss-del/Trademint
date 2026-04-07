@@ -149,6 +149,13 @@ const QRManagement = ({ theme, isDarkMode }) => {
       console.error('❌ Error uploading file:', error);
       console.error('Response data:', error.response?.data);
       console.error('Response status:', error.response?.status);
+      
+      // Handle 429 Too Many Requests
+      if (error.response?.status === 429) {
+        showAlert('⚠️ Too many upload attempts. Please wait 2-3 minutes and try again.', 'error');
+        return false;
+      }
+      
       const errorMessage = error.response?.data?.message || error.message || 'Failed to upload QR code';
       showAlert(errorMessage, 'error');
       return false;
@@ -187,14 +194,26 @@ const QRManagement = ({ theme, isDarkMode }) => {
 
   // Save QR code
   const saveQRCode = async () => {
-    console.log('saveQRCode called');
-    console.log('formData:', formData);
-    console.log('uploadMethod:', uploadMethod);
-    console.log('previewImage:', previewImage);
+    console.log('💾 saveQRCode called');
+    console.log('📋 formData:', formData);
+    console.log('📤 uploadMethod:', uploadMethod);
+    console.log('🖼️ previewImage:', previewImage);
     
     try {
       if (!formData.paymentMethod) {
         showAlert('Payment method is required', 'error');
+        return;
+      }
+
+      if (!formData.upiId || formData.upiId.trim() === '') {
+        showAlert('UPI ID is required. Please enter a valid UPI ID (e.g., yourname@paytm)', 'error');
+        return;
+      }
+
+      // Validate UPI ID format
+      const upiPattern = /^[\w.-]+@[\w.-]+$/;
+      if (!upiPattern.test(formData.upiId)) {
+        showAlert('Invalid UPI ID format. Example: yourname@paytm, business@phonepe', 'error');
         return;
       }
 
@@ -242,7 +261,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
         fetchQRCodes();
       }
     } catch (error) {
-      console.error('Error saving QR code:', error);
+      console.error('❌ Error saving QR code:', error);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to save QR code';
       showAlert(errorMessage, 'error');
     }
@@ -604,7 +623,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
               {/* Payment Method */}
               <div>
                 <label className={`block text-[10px] sm:text-xs font-black uppercase tracking-widest mb-1.5 sm:mb-2 ${theme.textDim}`}>
-                  Payment Method *
+                  Payment Method <span className="text-red-500">*</span>
                 </label>
                 <select
                   name="paymentMethod"
@@ -620,12 +639,15 @@ const QRManagement = ({ theme, isDarkMode }) => {
                     </option>
                   ))}
                 </select>
+                <p className={`text-[10px] mt-1.5 ${theme.textDim}`}>
+                  📌 Currently only "General" QR is supported for all payment methods
+                </p>
               </div>
 
               {/* Upload Method Toggle */}
               <div>
                 <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
-                  Upload Method
+                  Upload Method <span className="text-red-500">*</span>
                 </label>
                 <div className="flex bg-gray-800 rounded-xl p-1">
                   <button
@@ -636,7 +658,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
                         : 'text-gray-400 hover:text-white'
                     }`}
                   >
-                    File Upload
+                    📁 File Upload
                   </button>
                   <button
                     onClick={() => setUploadMethod('base64')}
@@ -646,7 +668,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
                         : 'text-gray-400 hover:text-white'
                     }`}
                   >
-                    Base64 Data
+                    🔗 Base64 Data
                   </button>
                 </div>
               </div>
@@ -654,7 +676,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
               {/* QR Image Upload */}
               <div>
                 <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
-                  {uploadMethod === 'file' ? 'Upload QR Code Image *' : 'QR Code Image Data *'}
+                  {uploadMethod === 'file' ? 'Upload QR Code Image' : 'QR Code Image Data'} <span className="text-red-500">*</span>
                 </label>
                 
                 {uploadMethod === 'file' ? (
@@ -675,13 +697,18 @@ const QRManagement = ({ theme, isDarkMode }) => {
                         <p className={`text-sm ${theme.textDim}`}>Click to upload QR image</p>
                         <p className={`text-xs ${theme.textDim} mt-1`}>PNG, JPG, GIF up to 5MB</p>
                       </label>
+                      {previewImage && (
+                        <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
+                          ✅ Image selected successfully
+                        </p>
+                      )}
                     </div>
                     {previewImage && (
-                      <div className="w-full sm:w-48 h-48 flex-shrink-0 flex items-center justify-center">
+                      <div className="w-full sm:w-48 h-48 flex-shrink-0 flex items-center justify-center bg-gray-800/50 rounded-xl p-2">
                         <img 
                           src={previewImage} 
                           alt="Preview" 
-                          className="w-full h-full object-contain border-2 border-gray-700 rounded-xl max-w-[192px] max-h-[192px]"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                     )}
@@ -699,11 +726,11 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       />
                     </div>
                     {formData.qrImage && (
-                      <div className="w-full sm:w-48 h-48 flex-shrink-0 flex items-center justify-center">
+                      <div className="w-full sm:w-48 h-48 flex-shrink-0 flex items-center justify-center bg-gray-800/50 rounded-xl p-2">
                         <img 
                           src={formData.qrImage} 
                           alt="Preview" 
-                          className="w-full h-full object-contain border-2 border-gray-700 rounded-xl max-w-[192px] max-h-[192px]"
+                          className="w-full h-full object-contain"
                         />
                       </div>
                     )}
@@ -714,18 +741,19 @@ const QRManagement = ({ theme, isDarkMode }) => {
               {/* UPI ID */}
               <div>
                 <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
-                  UPI ID (Optional)
+                  UPI ID <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   name="upiId"
                   value={formData.upiId}
                   onChange={handleInputChange}
-                  placeholder="e.g., yourname@paytm, business@phonepe"
+                  placeholder="e.g., yourname@paytm, business@phonepe, name@upi"
+                  required
                   className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
                 />
                 <p className={`text-[10px] mt-2 ${theme.textDim}`}>
-                  💡 This UPI ID will be shown on payment pages. Leave empty to use default.
+                  ⚠️ Required: This UPI ID will be displayed on all payment pages for users to copy and pay
                 </p>
               </div>
             </div>
