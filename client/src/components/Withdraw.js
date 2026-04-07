@@ -371,25 +371,17 @@ const Withdraw = () => {
         const savedUser = JSON.parse(localStorage.getItem('user'));
         
         if (savedUser && token) {
-          // Calculate yesterday's date for QuantifyHistory
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          yesterday.setHours(0, 0, 0, 0); // Start of yesterday
-          
           // ════════════════════════════════════════════════
           //  ⚡ OPTIMIZATION: Parallel API calls (faster loading)
           //  Sabhi requests ek saath bhejo, result wait karo
           // ════════════════════════════════════════════════
-          const [userRes, depositRes, historyRes] = await Promise.all([
+          const [userRes, depositRes] = await Promise.all([
             axios.get(`${API_CONFIG.BASE_URL}/api/auth/user`, {
               headers: { Authorization: `Bearer ${token}` }
             }),
             axios.get(`${API_CONFIG.BASE_URL}/api/deposit/user/${savedUser._id}`, {
               headers: { Authorization: `Bearer ${token}` }
-            }).catch(() => ({ data: [] })), // Error handle gracefully
-            axios.get(`${API_CONFIG.BASE_URL}/api/quantify/history?userId=${savedUser._id}&date=${yesterday.toISOString()}`, {
-              headers: { Authorization: `Bearer ${token}` }
-            }).catch(() => ({ data: null })) // Error handle gracefully
+            }).catch(() => ({ data: [] })) // Error handle gracefully
           ]);
           
           const user = userRes.data.user;
@@ -404,26 +396,24 @@ const Withdraw = () => {
           
           setApprovedDepositAmount(approvedAmount);
           
-          // Get yesterday's quantify revenue from history
-          const yesterdayRevenue = historyRes.data?.endingTotalRevenue || 0;
-          console.log('📊 Yesterday\'s quantify revenue:', yesterdayRevenue);
-          
-          // Calculate total and available balances
-          // Total Balance = Available Balance + Yesterday's Quantify Revenue (NOT today's)
-          const calculatedTotalBalance = (user.balance + approvedAmount + yesterdayRevenue).toFixed(2);
+          // Calculate total and available balances (matching mine page)
+          const calculatedTotalBalance = (user.balance + approvedAmount).toFixed(2);
           const calculatedAvailableBalance = (user.balance + approvedAmount).toFixed(2);
           
           setTotalBalance(calculatedTotalBalance);
           setAvailableBalance(calculatedAvailableBalance);
           setBalance(user.balance.toFixed(2)); // Keep the original balance for internal calculations if needed
           
-          // Set user data with yesterday's revenue (not today's)
+          // Calculate total balance based on the condition: if quantify > balance, show quantify; otherwise show balance
+          const totalBalance = Math.max(user.balance, user.quantify || 0);
+          
+          // Set user data
           setUserData({
             name: user.name || 'MEMBER_NNGX',
             uid: user.phone ? user.phone.slice(-6) : '------',
             balance: user.balance,
-            total_amount: parseFloat(calculatedTotalBalance),
-            quantify: yesterdayRevenue // Yesterday's revenue, not today's
+            total_amount: totalBalance,
+            quantify: user.quantify || 0
           });
           
           // Set user join date to calculate 16-day restriction

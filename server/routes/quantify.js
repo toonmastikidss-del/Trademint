@@ -344,39 +344,7 @@ router.get('/history', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const { page = 1, limit = 30, userId, date } = req.query;
-    
-    // If specific date is provided, fetch that date's history
-    if (date) {
-      const targetDate = new Date(date);
-      const startOfDay = new Date(targetDate);
-      startOfDay.setHours(0, 0, 0, 0);
-      
-      const endOfDay = new Date(targetDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      
-      const query = {
-        userId: userId || req.user.id,
-        date: {
-          $gte: startOfDay,
-          $lte: endOfDay
-        }
-      };
-      
-      console.log('🔍 Fetching quantify history for date:', date);
-      console.log('📅 Date range:', startOfDay, 'to', endOfDay);
-      
-      const history = await QuantifyHistory.findOne(query)
-        .sort({ date: -1 });
-      
-      if (!history) {
-        console.log('⚠️ No history found for date:', date);
-        return res.json(null);
-      }
-      
-      console.log('✅ Found history:', history.endingTotalRevenue);
-      return res.json(history);
-    }
+    const { page = 1, limit = 30 } = req.query;
     
     // If user is admin, show all history; otherwise show only their own
     const query = (user.status === 'Admin') ? {} : { userId: req.user.id };
