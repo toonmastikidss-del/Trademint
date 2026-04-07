@@ -18,81 +18,121 @@ const NavBar = ({ className }) => {
 
   useEffect(() => {
     const path = location.pathname;
-    if (path === '/') {
-      setActiveIcon('home');
-    } else if (path === '/record') {
-      setActiveIcon('record');
-    } else if (path === '/quantify') {
-      setActiveIcon('quantify');
-    } else if (path === '/task') {
-      setActiveIcon('task');
-    } else if (path === '/mine') {
-      setActiveIcon('account');
-    }
+    if (path === '/') setActiveIcon('home');
+    else if (path === '/record') setActiveIcon('record');
+    else if (path === '/quantify') setActiveIcon('quantify');
+    else if (path === '/task') setActiveIcon('task');
+    else if (path === '/mine') setActiveIcon('account');
   }, [location.pathname]);
 
   const handleIconClick = (icon, path) => {
     const token = localStorage.getItem('token');
-    
-    // Allow home but redirect everything else if no token
+
     if (!token && path !== '/') {
       navigate('/login');
       return;
     }
 
     if (location.pathname !== path) {
-      setIsBouncing({ ...isBouncing, [icon]: true });
+      setIsBouncing((prev) => ({ ...prev, [icon]: true }));
       setActiveIcon(icon);
-      setTimeout(() => setIsBouncing({ ...isBouncing, [icon]: false }), 500);
+      setTimeout(() => setIsBouncing((prev) => ({ ...prev, [icon]: false })), 500);
       navigate(path, { replace: true });
     }
   };
 
+  const leftItems = [
+    { key: 'home', icon: faHouse, label: 'Home', path: '/' },
+    { key: 'record', icon: faBook, label: 'Record', path: '/record' },
+  ];
+
+  const rightItems = [
+    { key: 'task', icon: faListCheck, label: 'Task', path: '/task' },
+    { key: 'account', icon: faUser, label: 'Account', path: '/mine' },
+  ];
+
   return (
-    <div className={`flex justify-around py-3 bg-[#101821] border-t border-gray-800 shadow-2xl navbar-slide-in z-50 ${className}`}>
-      <div className={`flex flex-col items-center cursor-pointer transition-all duration-300 ${activeIcon === 'home' ? 'text-[#49bace]' : 'text-gray-500'}`} onClick={() => handleIconClick('home', '/')}>
-        <FontAwesomeIcon 
-          icon={faHouse}
-          title="Home"
-          className={`h-5 mb-1 ${isBouncing.home ? 'animate-bounce' : ''}`} 
-        />
-        <div className="text-[10px] font-bold uppercase tracking-wide">Home</div>
-      </div>
-      <div className={`flex flex-col items-center cursor-pointer transition-all duration-300 ${activeIcon === 'record' ? 'text-[#49bace]' : 'text-gray-500'}`} onClick={() => handleIconClick('record', '/record')}>
-        <FontAwesomeIcon 
-          icon={faBook}
-          title="Record"
-          className={`h-5 mb-1 ${isBouncing.record ? 'animate-bounce' : ''}`} 
-        />
-        <div className="text-[10px] font-bold uppercase tracking-wide">Record</div>
-      </div>
-      <div className={`flex flex-col items-center cursor-pointer transition-all duration-300 ${activeIcon === 'quantify' ? 'text-[#49bace]' : 'text-gray-500'}`} onClick={() => handleIconClick('quantify', '/quantify')}>
-        <div className={`p-2 rounded-full -mt-6 bg-[#101821] border-2 ${activeIcon === 'quantify' ? 'border-[#49bace] shadow-[0_0_15px_rgba(73,186,206,0.4)]' : 'border-gray-800'}`}>
-          <FontAwesomeIcon 
+    <div
+      className={`
+        fixed bottom-0 left-0 right-0 w-full
+        flex items-end justify-around
+        py-2 bg-[#101821] border-t border-gray-800 shadow-2xl
+        navbar-slide-in z-50
+        ${className ?? ''}
+      `}
+    >
+      {/* Left Items */}
+      {leftItems.map(({ key, icon, label, path }) => (
+        <button
+          key={key}
+          onClick={() => handleIconClick(key, path)}
+          className={`
+            flex flex-col items-center flex-1
+            cursor-pointer transition-all duration-300
+            bg-transparent border-none outline-none pb-1
+            ${activeIcon === key ? 'text-[#49bace]' : 'text-gray-500'}
+          `}
+        >
+          <FontAwesomeIcon
+            icon={icon}
+            className={`h-5 mb-1 ${isBouncing[key] ? 'animate-bounce' : ''}`}
+          />
+          <span className="text-[10px] font-bold uppercase tracking-wide">
+            {label}
+          </span>
+        </button>
+      ))}
+
+      {/* Center Quantify FAB */}
+      <button
+        onClick={() => handleIconClick('quantify', '/quantify')}
+        className={`
+          flex flex-col items-center flex-1 -mt-5
+          cursor-pointer transition-all duration-300
+          bg-transparent border-none outline-none
+          ${activeIcon === 'quantify' ? 'text-[#49bace]' : 'text-gray-500'}
+        `}
+      >
+        <div
+          className={`
+            p-3 rounded-full bg-[#101821] border-2
+            transition-all duration-300
+            ${activeIcon === 'quantify'
+              ? 'border-[#49bace] shadow-[0_0_15px_rgba(73,186,206,0.4)]'
+              : 'border-gray-700'}
+          `}
+        >
+          <FontAwesomeIcon
             icon={faIndianRupeeSign}
-            title="Quantify"
-            className={`h-6 ${isBouncing.quantify ? 'animate-bounce' : ''}`} 
+            className={`h-6 ${isBouncing.quantify ? 'animate-bounce' : ''}`}
           />
         </div>
-        <div className="text-[10px] font-bold uppercase tracking-wide mt-1">Quantify</div>
-      </div>
+        <span className="text-[10px] font-bold uppercase tracking-wide mt-1">
+          Quantify
+        </span>
+      </button>
 
-      <div className={`flex flex-col items-center cursor-pointer transition-all duration-300 ${activeIcon === 'task' ? 'text-[#49bace]' : 'text-gray-500'}`} onClick={() => handleIconClick('task', '/task')}>
-        <FontAwesomeIcon 
-          icon={faListCheck}
-          title="Task"
-          className={`h-5 mb-1 ${isBouncing.task ? 'animate-bounce' : ''}`} 
-        />
-        <div className="text-[10px] font-bold uppercase tracking-wide">Task</div>
-      </div>
-      <div className={`flex flex-col items-center cursor-pointer transition-all duration-300 ${activeIcon === 'account' ? 'text-[#49bace]' : 'text-gray-500'}`} onClick={() => handleIconClick('account', '/mine')}>
-        <FontAwesomeIcon 
-          icon={faUser}
-          title="Account"
-          className={`h-5 mb-1 ${isBouncing.account ? 'animate-bounce' : ''}`} 
-        />
-        <div className="text-[10px] font-bold uppercase tracking-wide">Account</div>
-      </div>
+      {/* Right Items */}
+      {rightItems.map(({ key, icon, label, path }) => (
+        <button
+          key={key}
+          onClick={() => handleIconClick(key, path)}
+          className={`
+            flex flex-col items-center flex-1
+            cursor-pointer transition-all duration-300
+            bg-transparent border-none outline-none pb-1
+            ${activeIcon === key ? 'text-[#49bace]' : 'text-gray-500'}
+          `}
+        >
+          <FontAwesomeIcon
+            icon={icon}
+            className={`h-5 mb-1 ${isBouncing[key] ? 'animate-bounce' : ''}`}
+          />
+          <span className="text-[10px] font-bold uppercase tracking-wide">
+            {label}
+          </span>
+        </button>
+      ))}
     </div>
   );
 };

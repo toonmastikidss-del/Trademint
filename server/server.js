@@ -48,7 +48,7 @@ if (process.env.NODE_ENV === 'production') {
 // Rate Limiting - Prevent API abuse
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 50, // Limit each IP to 50 requests per windowMs (reduced from 100)
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -57,14 +57,44 @@ const limiter = rateLimit({
 // Lenient rate limit for QR code uploads (admin operations)
 const qrUploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Allow 50 QR upload attempts per 15 minutes
+  max: 30, // Allow 30 QR upload attempts per 15 minutes (reduced from 50)
   message: 'Too many QR upload attempts, please wait a few minutes and try again.',
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// Apply rate limiting to all API routes
-app.use('/api/', limiter);
+// UNLIMITED ACCESS - No rate limiting (COMMENTED FOR LATER USE)
+// const unlimitedLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000,
+//   max: 0, // 0 = unlimited requests
+//   message: 'Too many requests',
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
+
+// IP addresses with unlimited access (Add your IPs here)
+const unlimitedIPs = [
+  'YOUR_IP_ADDRESS_HERE', // Add your IP here (e.g., '123.45.67.89')
+  '::1',                  // Localhost IPv6
+  '127.0.0.1'             // Localhost IPv4
+];
+
+// Custom rate limiter with IP whitelist
+const limiterWithWhitelist = (req, res, next) => {
+  const userIP = req.ip || req.connection.remoteAddress;
+  
+  // Check if IP is in whitelist (unlimited access)
+  if (unlimitedIPs.includes(userIP)) {
+    // console.log(`✅ Unlimited access for IP: ${userIP}`);
+    return next(); // Skip rate limiting
+  }
+  
+  // Apply normal rate limiting for other IPs
+  return limiter(req, res, next);
+};
+
+// Apply rate limiting to all API routes (with IP whitelist)
+app.use('/api/', limiterWithWhitelist);
 
 // Override with lenient limiter for QR upload endpoint
 app.use('/api/qr/qrcodes/upload', qrUploadLimiter);
