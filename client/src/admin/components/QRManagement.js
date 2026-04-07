@@ -691,7 +691,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       />
                       <label
                         htmlFor="qrImageUpload"
-                        className={`w-full ${theme.innerCard} border-2 border-dashed ${theme.border} rounded-2xl py-8 px-4 text-center cursor-pointer hover:border-[#49bace] transition-all`}
+                        className={`block w-full ${theme.innerCard} border-2 border-dashed ${theme.border} rounded-2xl py-8 px-4 text-center cursor-pointer hover:border-[#49bace] transition-all`}
                       >
                         <Upload size={24} className={`${theme.textDim} mx-auto mb-2`} />
                         <p className={`text-sm ${theme.textDim}`}>Click to upload QR image</p>

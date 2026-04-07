@@ -319,4 +319,4 @@ cron.schedule('0 0 * * *', async () => {
   timezone: "Asia/Kolkata" // ✅ Indian Standard Time
 });
 
-console.log('✅ Midnight reset cron job scheduled (runs at 12:00 AM IST daily)');
+// console.log('✅ Midnight reset cron job scheduled (runs at 12:00 AM IST daily)');
