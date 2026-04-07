@@ -21,6 +21,7 @@ const UPIQRPayment = () => {
   const [screenshot, setScreenshot] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
   const [screenshotError, setScreenshotError] = useState('');
+  const [dynamicUpiId, setDynamicUpiId] = useState('');
 
   const upiId = 'rebatiranjabhowmik@rbl';
 
@@ -28,19 +29,63 @@ const UPIQRPayment = () => {
   useEffect(() => {
     const fetchQrCode = async () => {
       try {
+        console.log('🔄 Fetching QR code data...');
         const response = await axios.get(`${API_CONFIG.BASE_URL}/api/qr/qrcodes`);
+        console.log('📦 QR codes response:', response.data);
+        
         const generalQr = response.data.find(qr => qr.paymentMethod === 'General');
         if (generalQr) {
+          console.log('✅ General QR found:', generalQr);
           setQrCodeData(generalQr);
+          // Set dynamic UPI ID from QR code data
+          if (generalQr.upiId) {
+            console.log('🎯 UPI ID from database:', generalQr.upiId);
+            setDynamicUpiId(generalQr.upiId);
+          } else {
+            console.log('⚠️ No UPI ID in database, using fallback');
+            setDynamicUpiId('rebatiranjabhowmik@rbl'); // Fallback
+          }
+        } else {
+          console.log('⚠️ No General QR code found in response');
+          setDynamicUpiId('rebatiranjabhowmik@rbl'); // Fallback
         }
       } catch (error) {
-        // console.error('Error fetching QR code:', error);
+        console.error('❌ Error fetching QR code:', error);
+        console.error('Error details:', error.response?.data || error.message);
+        setDynamicUpiId('rebatiranjabhowmik@rbl'); // Fallback on error
       } finally {
         setQrLoading(false);
       }
     };
 
     fetchQrCode();
+  }, []);
+
+  // Keep screenshot in localStorage to prevent loss on re-render
+  useEffect(() => {
+    if (screenshotPreview) {
+      localStorage.setItem('paymentScreenshotPreview', screenshotPreview);
+      localStorage.setItem('paymentScreenshotTime', Date.now().toString());
+    }
+  }, [screenshotPreview]);
+
+  // Load screenshot preview from localStorage on mount
+  useEffect(() => {
+    const savedPreview = localStorage.getItem('paymentScreenshotPreview');
+    const savedTime = localStorage.getItem('paymentScreenshotTime');
+    
+    // Only load if screenshot is less than 30 minutes old (1800000 ms)
+    if (savedPreview && savedTime) {
+      const age = Date.now() - parseInt(savedTime);
+      if (age < 1800000) {
+        console.log('✅ Restored screenshot from localStorage, age:', Math.round(age/1000), 'seconds');
+        setScreenshotPreview(savedPreview);
+      } else {
+        console.log('⚠️ Screenshot expired, clearing from localStorage');
+        localStorage.removeItem('paymentScreenshotPreview');
+        localStorage.removeItem('paymentScreenshotTime');
+      }
+    }
   }, []);
 
   // Timer countdown effect
@@ -74,7 +119,8 @@ const UPIQRPayment = () => {
   }, [isScanning]);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText('rebatiranjabhowmik@rbl');
+    const upiIdToCopy = dynamicUpiId || 'rebatiranjabhowmik@rbl';
+    navigator.clipboard.writeText(upiIdToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -269,13 +315,18 @@ const UPIQRPayment = () => {
                 </div>
               ) : qrCodeData && qrCodeData.qrImage ? (
                 <img
-                  src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
+                  key={qrCodeData.qrImage} // Force re-render when QR changes
+                  src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}?t=${Date.now()}`} // Cache busting
                   alt="QR Code"
                   className="w-full h-full object-contain"
                   crossOrigin="anonymous"
                   onError={(e) => {
+                    console.error('❌ QR Image failed to load:', `${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`);
                     e.target.style.display = 'none';
-                    // console.log('❌ QR Image failed:', `${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`);
+                    e.target.parentElement.innerHTML = '<div class="text-center text-gray-500"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mx-auto mb-2 opacity-50"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg><p class="text-sm">Failed to load QR</p></div>';
+                  }}
+                  onLoad={() => {
+                    console.log('✅ QR Image loaded successfully:', `${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`);
                   }}
                 />
               ) : (
@@ -320,13 +371,14 @@ const UPIQRPayment = () => {
             <div className="flex gap-3 items-center">
               <input
                 type="text"
-                value={upiId}
+                value={dynamicUpiId || 'Loading...'}
                 readOnly
                 className="flex-1 px-4 py-3 bg-gray-50 border border-gray-200 rounded text-sm text-gray-700"
               />
               <button
                 onClick={handleCopy}
-                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded font-semibold transition-colors duration-200 min-w-fit"
+                disabled={!dynamicUpiId}
+                className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded font-semibold transition-colors duration-200 min-w-fit disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {copied ? 'COPIED' : 'COPY'}
               </button>

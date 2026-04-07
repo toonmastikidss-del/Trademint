@@ -24,13 +24,16 @@ const QRManagement = ({ theme, isDarkMode }) => {
   const fetchQRCodes = async () => {
     try {
       setLoading(true);
+      console.log('🔄 Fetching QR codes from server...');
       const adminToken = localStorage.getItem('adminToken');
       const response = await axios.get(`${API_CONFIG.BASE_URL}/api/qr/qrcodes`, {
         headers: { Authorization: `Bearer ${adminToken}` }
       });
+      console.log('✅ QR codes fetched:', response.data.length, 'codes');
+      console.log('QR Codes data:', response.data);
       setQrCodes(response.data);
     } catch (error) {
-      console.error('Error fetching QR codes:', error);
+      console.error('❌ Error fetching QR codes:', error);
       showAlert('Failed to fetch QR codes', 'error');
     } finally {
       setLoading(false);
@@ -81,7 +84,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
 
   // Handle file upload
   const handleFileUpload = async (file) => {
-    console.log('handleFileUpload called with file:', file);
+    console.log('🚀 handleFileUpload called with file:', file);
     if (!file) {
       showAlert('No file selected', 'error');
       return false;
@@ -90,41 +93,44 @@ const QRManagement = ({ theme, isDarkMode }) => {
     const formDataObj = new FormData();
     formDataObj.append('qrImage', file);
     formDataObj.append('paymentMethod', formData.paymentMethod);
-    formDataObj.append('upiId', formData.upiId);
+    formDataObj.append('upiId', formData.upiId || '');
+    
+    console.log('📋 Form data:', {
+      paymentMethod: formData.paymentMethod,
+      upiId: formData.upiId,
+    });
     
     // Get admin data from localStorage
     const adminData = JSON.parse(localStorage.getItem('adminData'));
-    console.log('Admin data from localStorage:', adminData);
+    console.log('👤 Admin data from localStorage:', adminData);
     
     // Use the ID from adminData (this is the correct admin ID)
-    const adminId = adminData?.id || adminData?._id || adminData?.admin?._id;
-    console.log('Extracted adminId:', adminId);
+    const adminId = adminData?.id || adminData?._id || adminData?.admin?._id || adminData?.admin?.id;
+    console.log('🔑 Extracted adminId:', adminId);
     
     if (!adminId) {
-      console.error('Admin ID not found in localStorage');
+      console.error('❌ Admin ID not found in localStorage');
       showAlert('Admin authentication error. Please log in again.', 'error');
       return false;
     }
     
     formDataObj.append('adminId', adminId);
     
-    console.log('FormData created:', {
-      paymentMethod: formData.paymentMethod,
-      upiId: formData.upiId,
-      adminId: adminId
-    });
-    
     try {
       const adminToken = localStorage.getItem('adminToken');
-      console.log('Sending request to server with token:', adminToken ? 'Token present' : 'No token');
+      console.log('🔐 Admin token:', adminToken ? 'Present' : 'Missing');
+      
+      console.log('📤 Sending upload request to server...');
       
       // Make the API call
       const response = await axios.post(`${API_CONFIG.BASE_URL}/api/qr/qrcodes/upload`, formDataObj, {
         headers: { 
-          'Content-Type': 'multipart/form-data',
           Authorization: `Bearer ${adminToken}`
+          // Don't set Content-Type - axios will set it automatically with boundary for FormData
         }
       });
+      
+      console.log('✅ Upload response:', response.data);
       
       if (response.data && response.data.message) {
         showAlert(response.data.message, 'success');
@@ -132,12 +138,17 @@ const QRManagement = ({ theme, isDarkMode }) => {
         showAlert('QR code uploaded successfully', 'success');
       }
       
+      // Wait a bit before fetching to ensure server has saved
+      setTimeout(() => {
+        fetchQRCodes();
+      }, 500);
+      
       setShowEditModal(false);
-      fetchQRCodes();
       return true;
     } catch (error) {
-      console.error('Error uploading file:', error);
+      console.error('❌ Error uploading file:', error);
       console.error('Response data:', error.response?.data);
+      console.error('Response status:', error.response?.status);
       const errorMessage = error.response?.data?.message || error.message || 'Failed to upload QR code';
       showAlert(errorMessage, 'error');
       return false;
@@ -147,11 +158,13 @@ const QRManagement = ({ theme, isDarkMode }) => {
   // Handle form input changes
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    console.log(`📝 Form field changed: ${name} = ${value}`);
     setFormData({ ...formData, [name]: value });
   };
 
   // Open edit modal
   const openEditModal = (qrCode = null) => {
+    console.log('📂 Opening edit modal with:', qrCode);
     if (qrCode) {
       setFormData({
         paymentMethod: qrCode.paymentMethod,
@@ -385,9 +398,13 @@ const QRManagement = ({ theme, isDarkMode }) => {
                           <td className="py-4 px-4">
                             {qrCode ? (
                               <img 
-                                src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}`} 
+                                src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}?t=${Date.now()}`}
                                 alt={`${method.name} QR`}
                                 className="w-16 h-16 object-contain border border-gray-700 rounded-lg"
+                                onError={(e) => {
+                                  console.error('Failed to load QR image:', qrCode.qrImage);
+                                  e.target.style.display = 'none';
+                                }}
                               />
                             ) : (
                               <div className="w-16 h-16 bg-gray-800 rounded-lg flex items-center justify-center">
@@ -517,9 +534,13 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       <div className="space-y-4">
                         <div className="flex justify-center">
                           <img 
-                            src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}`} 
+                            src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}?t=${Date.now()}`}
                             alt={`${method.name} QR`}
                             className="w-32 h-32 object-contain border-2 border-gray-700 rounded-xl"
+                            onError={(e) => {
+                              console.error('Failed to load QR image:', qrCode.qrImage);
+                              e.target.style.display = 'none';
+                            }}
                           />
                         </div>
                         <div className="text-center">
@@ -693,16 +714,19 @@ const QRManagement = ({ theme, isDarkMode }) => {
               {/* UPI ID */}
               <div>
                 <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
-                  UPI ID
+                  UPI ID (Optional)
                 </label>
                 <input
                   type="text"
                   name="upiId"
                   value={formData.upiId}
                   onChange={handleInputChange}
-                  placeholder="Enter UPI ID (optional)"
+                  placeholder="e.g., yourname@paytm, business@phonepe"
                   className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
                 />
+                <p className={`text-[10px] mt-2 ${theme.textDim}`}>
+                  💡 This UPI ID will be shown on payment pages. Leave empty to use default.
+                </p>
               </div>
             </div>
 

@@ -6,7 +6,7 @@
 import axios from 'axios';
 
 // Use environment variable or fallback to production URL
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://trademint-backend-9zx4.onrender.com';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'trademint-backend-production.up.railway.app';
 
 export const refreshUserDataOnce = async () => {
   try {

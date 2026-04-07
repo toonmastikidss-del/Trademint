@@ -19,6 +19,7 @@ const SuperQRPayment = () => {
   const [screenshot, setScreenshot] = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
   const [screenshotError, setScreenshotError] = useState('');
+  const [dynamicUpiId, setDynamicUpiId] = useState('');
 
   // Fetch QR code data
   useEffect(() => {
@@ -28,9 +29,16 @@ const SuperQRPayment = () => {
         const generalQr = response.data.find(qr => qr.paymentMethod === 'General');
         if (generalQr) {
           setQrCodeData(generalQr);
+          // Set dynamic UPI ID from QR code data
+          if (generalQr.upiId) {
+            setDynamicUpiId(generalQr.upiId);
+          } else {
+            setDynamicUpiId('superpay@merchant456'); // Fallback
+          }
         }
       } catch (error) {
         console.error('Error fetching QR code:', error);
+        setDynamicUpiId('superpay@merchant456'); // Fallback on error
       } finally {
         setQrLoading(false);
       }
@@ -59,7 +67,8 @@ const SuperQRPayment = () => {
   }, []);
 
   const handleCopyUPI = () => {
-    navigator.clipboard.writeText('superpay@merchant456');
+    const upiIdToCopy = dynamicUpiId || 'superpay@merchant456';
+    navigator.clipboard.writeText(upiIdToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -200,9 +209,12 @@ const SuperQRPayment = () => {
               </div>
             ) : qrCodeData && qrCodeData.qrImage ? (
               <img 
-                src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
+                src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}?t=${Date.now()}`}
                 alt="Super QR Code" 
                 className="w-full h-full object-contain"
+                onError={(e) => {
+                  console.error('Failed to load QR image:', qrCodeData.qrImage);
+                }}
               />
             ) : (
               <div className="text-center text-gray-500">
@@ -231,13 +243,14 @@ const SuperQRPayment = () => {
             <div className="flex items-center gap-2">
               <input 
                 type="text" 
-                value="superpay@merchant456" 
+                value={dynamicUpiId || 'Loading...'} 
                 readOnly
                 className="flex-1 bg-[#1a1f2e] border border-gray-800 rounded-xl px-4 py-3 text-sm font-medium"
               />
               <button 
                 onClick={handleCopyUPI}
-                className="bg-green-600 text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-green-700 transition-colors"
+                disabled={!dynamicUpiId}
+                className="bg-green-600 text-white px-4 py-3 rounded-xl font-bold text-sm hover:bg-green-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {copied ? 'COPIED' : 'COPY'}
               </button>

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://trademint-backend-9zx4.onrender.com';
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'trademint-backend-production.up.railway.app';
 
 let lastKnownBalance = null;
 let lastKnownQuantify = null;
