@@ -105,7 +105,7 @@ const AdminPanel = () => {
       
       setTasks(response.data);
     } catch (error) {
-      console.error('Error fetching tasks:', error);
+      // console.error('Error fetching tasks:', error);
     } finally {
       setLoadingTasks(false);
     }
@@ -116,7 +116,7 @@ const AdminPanel = () => {
     try {
       const adminToken = localStorage.getItem('adminToken');
       if (!adminToken) {
-        console.error('No admin token found');
+        // console.error('No admin token found');
         return;
       }
       
@@ -124,27 +124,27 @@ const AdminPanel = () => {
       
       // Fetch all data in parallel with better error handling
       const depositsRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/all`, { headers }).catch(err => {
-        console.error('Failed to fetch deposits:', err.response?.data || err.message);
+        // console.error('Failed to fetch deposits:', err.response?.data || err.message);
         return { data: [] };
       });
       
       const withdrawalsRes = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal/all`, { headers }).catch(err => {
-        console.error('Failed to fetch withdrawals:', err.response?.data || err.message);
+        // console.error('Failed to fetch withdrawals:', err.response?.data || err.message);
         return { data: [] };
       });
       
       const banksRes = await axios.get(`${API_CONFIG.BASE_URL}/api/bank/all`, { headers }).catch(err => {
-        console.error('Failed to fetch banks:', err.response?.data || err.message);
+        // console.error('Failed to fetch banks:', err.response?.data || err.message);
         return { data: [] };
       });
       
       const usersRes = await axios.get(`${API_CONFIG.BASE_URL}/api/admin/users`, { headers }).catch(err => {
-        console.error('Failed to fetch users:', err.response?.data || err.message);
+        // console.error('Failed to fetch users:', err.response?.data || err.message);
         return { data: { users: [] } };
       });
       
       const kycRes = await axios.get(`${API_CONFIG.BASE_URL}/api/kyc/all`, { headers }).catch(err => {
-        console.error('Failed to fetch KYC:', err.response?.data || err.message);
+        // console.error('Failed to fetch KYC:', err.response?.data || err.message);
         return { data: [] };
       });
       
@@ -292,7 +292,7 @@ const AdminPanel = () => {
         setDeposits(response.data);
         console.log('Successfully fetched deposits:', response.data.length, 'records');
       } else {
-        console.warn('Empty response from deposits API');
+        // console.warn('Empty response from deposits API');
         setDeposits([]);
       }
     } catch (error) {

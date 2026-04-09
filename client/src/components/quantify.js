@@ -115,7 +115,7 @@ const Quantify = () => {
       const user  = JSON.parse(localStorage.getItem('user'));
 
       if (!token || !user) {
-        console.error('User not authenticated');
+        // console.error('User not authenticated');
         return;
       }
 
@@ -152,7 +152,7 @@ const Quantify = () => {
         videoRef.current.play().catch(() => {});
       }
     } catch (error) {
-      console.error('Error loading user data:', error);
+      // console.error('Error loading user data:', error);
     } finally {
       setInitialLoading(false);
     }
@@ -244,7 +244,7 @@ const Quantify = () => {
       } else {
         setAlertModal({ isOpen: true, message: 'Error starting quantifying. Please try again.', type: 'error' });
       }
-      console.error('Error starting quantifying:', error);
+      // console.error('Error starting quantifying:', error);
     } finally {
       setActionLoading(false);
     }

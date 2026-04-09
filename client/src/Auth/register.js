@@ -103,14 +103,14 @@ const Register = () => {
       // If registration successful and referral code was used, track the referral
       if (res.data.user && referralCode) {
         try {
-          console.log('Tracking referral:', { referralCode, userId: res.data.user._id });
+          // console.log('Tracking referral:', { referralCode, userId: res.data.user._id });
           const trackResponse = await axios.post(`${API_CONFIG.BASE_URL}/api/referral/track`, {
             referralCode: referralCode,
             userId: res.data.user._id
           });
-          console.log('Referral tracked successfully:', trackResponse.data);
+          // console.log('Referral tracked successfully:', trackResponse.data);
         } catch (referralError) {
-          console.error('Error tracking referral:', referralError.response?.data || referralError.message);
+          // console.error('Error tracking referral:', referralError.response?.data || referralError.message);
         }
       }
       

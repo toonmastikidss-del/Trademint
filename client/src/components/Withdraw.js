@@ -195,8 +195,6 @@ const Withdraw = () => {
         // console.log('💰 Withdrawal page detected balance change!');
         // console.log('Old Balance:', result.oldBalance);
         // console.log('New Balance:', result.newBalance);
-        
-        // Show notification
         showAlert(
           'Balance Updated!',
           `Your balance has been updated: ₹${result.oldBalance.toFixed(2)} → ₹${result.newBalance.toFixed(2)} (${result.newBalance > result.oldBalance ? '+' : ''}${(result.newBalance - result.oldBalance).toFixed(2)})`,
@@ -279,7 +277,7 @@ const Withdraw = () => {
       secondsRemainingRef.current = Math.max(0, Math.floor(secondsRemaining || 0));
       setLoadingRestriction(false);
     } catch (error) {
-      console.error('Error checking restriction:', error);
+      // console.error('Error checking restriction:', error);
       // ── FIX 2: Auto-logout on 403 ────────────────────────────────────────
       handleAuthError(error.response?.status);
       setLoadingRestriction(false);
@@ -321,7 +319,7 @@ const Withdraw = () => {
         }
       }
     } catch (err) {
-      console.error('Error fetching bank details:', err);
+      // console.error('Error fetching bank details:', err);
       // ── FIX 2: Auto-logout on 403 ────────────────────────────────────────
       handleAuthError(err.response?.status);
       // User has no bank accounts
@@ -339,7 +337,7 @@ const Withdraw = () => {
       const user = JSON.parse(localStorage.getItem('user'));
       
       if (!token || !user) {
-        console.error('User not authenticated');
+        // console.error('User not authenticated');
         navigate('/login');
         return;
       }
@@ -352,7 +350,7 @@ const Withdraw = () => {
 
       setWithdrawalHistory(response.data);
     } catch (error) {
-      console.error('Error fetching withdrawal history:', error);
+      // console.error('Error fetching withdrawal history:', error);
       // ── FIX 2: Auto-logout on 403 ────────────────────────────────────────
       handleAuthError(error.response?.status);
       setWithdrawalHistory([]);
@@ -474,7 +472,7 @@ const Withdraw = () => {
           }
         }
       } catch (err) {
-        console.error('Error in withdrawal component:', err);
+        // console.error('Error in withdrawal component:', err);
         handleAuthError(err.response?.status);
         
         // Set default balances
@@ -914,7 +912,7 @@ const Withdraw = () => {
                 });
                 kycApproved = kycRes.data.status === 'Approved';
               } catch (kycErr) {
-                console.error('Error fetching KYC status:', kycErr);
+                // console.error('Error fetching KYC status:', kycErr);
                 // ── FIX 2: Auto-logout on 403 ──────────────────────────────
                 handleAuthError(kycErr.response?.status);
                 kycApproved = false;
@@ -993,10 +991,10 @@ const Withdraw = () => {
                   }
                 );
               } catch (error) {
-                console.error('=== WITHDRAWAL ERROR DEBUG ===');
-                console.error('Error status:', error.response?.status);
-                console.error('Error message:', error.response?.data?.error);
-                console.error('Full error:', error);
+                // console.error('=== WITHDRAWAL ERROR DEBUG ===');
+                // console.error('Error status:', error.response?.status);
+                // console.error('Error message:', error.response?.data?.error);
+                // console.error('Full error:', error);
                 
                 // ── FIX: NEVER logout on password error ─────────────────────
                 const errorMessage = error.response?.data?.error || 'Failed to submit withdrawal request. Please try again.';
@@ -1006,18 +1004,18 @@ const Withdraw = () => {
                 // 401 = Invalid password → NEVER logout, just show error
                 if (errorStatus === 403) {
                   // 403 = JWT token problem → logout
-                  console.log('⚠️ 403 detected - logging out');
+                  // console.log('⚠️ 403 detected - logging out');
                   handleAuthError(403);
                   showAlert('Session Expired', 'Please login again', 'error');
                 } else if (errorStatus === 401) {
                   // 401 from withdrawal endpoint = WRONG PASSWORD
                   // This is NOT a JWT error, it's a password verification error
-                  console.log('❌ Invalid withdrawal password - NOT logging out');
+                  // console.log('❌ Invalid withdrawal password - NOT logging out');
                   showAlert('Invalid Password', errorMessage, 'error');
                   // DO NOT call handleAuthError for password errors!
                 } else {
                   // Other errors (400, 500, network issues)
-                  console.log('⚠️ Other error:', errorStatus);
+                  // console.log('⚠️ Other error:', errorStatus);
                   showAlert('Error', errorMessage, 'error');
                 }
                 

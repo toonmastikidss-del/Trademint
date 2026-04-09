@@ -17,12 +17,12 @@ dotenv.config();
 
 // Validate required environment variables
 if (!process.env.MONGO_URI) {
-  console.error('❌ ERROR: MONGO_URI is not defined in environment variables');
+  // console.error('❌ ERROR: MONGO_URI is not defined in environment variables');
   process.exit(1);
 }
 
 if (!process.env.JWT_SECRET || process.env.JWT_SECRET === '2c7f664f4dd5cbfd3c1b78594640f131ef36085ec4794f4e387d4628dd0500f3') {
-  console.warn('⚠️  WARNING: JWT_SECRET is using default value. Change this in production!');
+  // console.warn('⚠️  WARNING: JWT_SECRET is using default value. Change this in production!');
 }
 
 const app = express();
@@ -48,7 +48,7 @@ if (process.env.NODE_ENV === 'production') {
 // Rate Limiting - Prevent API abuse
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50, // Limit each IP to 50 requests per windowMs (reduced from 100)
+  max: 250, // Limit each IP to 500 requests per 15 minutes (increased from 50)
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -57,7 +57,7 @@ const limiter = rateLimit({
 // Lenient rate limit for QR code uploads (admin operations)
 const qrUploadLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // Allow 30 QR upload attempts per 15 minutes (reduced from 50)
+  max: 100, // Allow 100 QR upload attempts per 15 minutes (increased from 30)
   message: 'Too many QR upload attempts, please wait a few minutes and try again.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -74,7 +74,7 @@ const qrUploadLimiter = rateLimit({
 
 // IP addresses with unlimited access (Add your IPs here)
 const unlimitedIPs = [
-  'YOUR_IP_ADDRESS_HERE', // Add your IP here (e.g., '123.45.67.89')
+  '2409:40e3:31da:a0b1:2094:acff:fe6d:4a8', // User's IP - Unlimited access
   '::1',                  // Localhost IPv6
   '127.0.0.1'             // Localhost IPv4
 ];
@@ -138,14 +138,14 @@ app.use('/api/game', require('./routes/game'));
 // ─────────────────────────────────────────────────────────────────────────────
 app.get('/api/test/trigger-midnight-reset', async (req, res) => {
   try {
-    console.log('🧪 MANUAL TEST: Midnight reset triggered manually...');
+    // console.log('🧪 MANUAL TEST: Midnight reset triggered manually...');
 
     const Quantify = require('./models/Quantify');
     const QuantifyHistory = require('./models/QuantifyHistory');
 
     // Step 1: Saare users ka quantify data fetch karo
     const allQuantifyData = await Quantify.find({});
-    console.log(`📊 Total users found: ${allQuantifyData.length}`);
+    // console.log(`📊 Total users found: ${allQuantifyData.length}`);
 
     if (allQuantifyData.length === 0) {
       return res.json({
@@ -185,9 +185,9 @@ app.get('/api/test/trigger-midnight-reset', async (req, res) => {
             hadDepositOrWithdrawal: false
           });
           userResult.historySaved = true;
-          console.log(`✅ History saved for user: ${quantifyData.userId} | Earning: ${quantifyData.todayEarning}`);
+          // console.log(`✅ History saved for user: ${quantifyData.userId} | Earning: ${quantifyData.todayEarning}`);
         } else {
-          console.log(`⚠️ No earning today for user: ${quantifyData.userId} — history skipped`);
+          // console.log(`⚠️ No earning today for user: ${quantifyData.userId} — history skipped`);
         }
 
         // Step 4: Reset karo naye din ke liye
@@ -199,11 +199,11 @@ app.get('/api/test/trigger-midnight-reset', async (req, res) => {
         await quantifyData.save();
 
         userResult.resetDone = true;
-        console.log(`🔄 Reset done for user: ${quantifyData.userId}`);
+        // console.log(`🔄 Reset done for user: ${quantifyData.userId}`);
 
       } catch (userError) {
         userResult.error = userError.message;
-        console.error(`❌ Error for user ${quantifyData.userId}:`, userError);
+        // console.error(`❌ Error for user ${quantifyData.userId}:`, userError);
       }
 
       results.push(userResult);
@@ -214,10 +214,10 @@ app.get('/api/test/trigger-midnight-reset', async (req, res) => {
     const resetDoneCount = results.filter(r => r.resetDone).length;
     const errorCount = results.filter(r => r.error).length;
 
-    console.log('✅ MANUAL TEST: Midnight reset completed!');
-    console.log(`   History saved: ${historySavedCount}/${allQuantifyData.length}`);
-    console.log(`   Reset done: ${resetDoneCount}/${allQuantifyData.length}`);
-    console.log(`   Errors: ${errorCount}`);
+    // console.log('✅ MANUAL TEST: Midnight reset completed!');
+    // console.log(`   History saved: ${historySavedCount}/${allQuantifyData.length}`);
+    // console.log(`   Reset done: ${resetDoneCount}/${allQuantifyData.length}`);
+    // console.log(`   Errors: ${errorCount}`);
 
     res.json({
       success: true,
@@ -233,7 +233,7 @@ app.get('/api/test/trigger-midnight-reset', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ MANUAL TEST: Midnight reset failed:', error);
+    // console.error('❌ MANUAL TEST: Midnight reset failed:', error);
     res.status(500).json({
       success: false,
       message: '❌ Manual reset failed!',
@@ -263,12 +263,12 @@ const createInitialAdmin = async () => {
       });
       
       await admin.save();
-      console.log('✅ Initial admin user created successfully');
+      // console.log('✅ Initial admin user created successfully');
     } else {
-      console.log('✅ Admin user already exists');
+      // console.log('✅ Admin user already exists');
     }
   } catch (err) {
-    console.error('Error creating initial admin:', err);
+    // console.error('Error creating initial admin:', err);
   }
 };
 
@@ -278,17 +278,19 @@ mongoose.connect(process.env.MONGO_URI, {
   socketTimeoutMS: 45000,
 })
     .then(async () => {
-      console.log('✅ MongoDB Connected Successfully');
+      // console.log('✅ MongoDB Connected Successfully');
       await createInitialAdmin();
     })
     .catch(err => {
-      console.error('❌ MongoDB Connection Error:', err.message);
-      console.error('Please check your MONGO_URI environment variable and network connection');
+      // console.error('❌ MongoDB Connection Error:', err.message);
+      // console.error('Please check your MONGO_URI environment variable and network connection');
       process.exit(1);
     });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  // console.log(`Server running on port ${PORT}`);
+});
 
 // ✅ MIDNIGHT RESET CRON JOB
 // Har raat 12:00 AM IST par automatically chalega — server side

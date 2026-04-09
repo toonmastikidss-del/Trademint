@@ -37,7 +37,7 @@ const CloudspayQRPayment = () => {
           }
         }
       } catch (error) {
-        console.error('Error fetching QR code:', error);
+        // console.error('Error fetching QR code:', error);
         setDynamicUpiId('cloudspay@merchant789'); // Fallback on error
       } finally {
         setQrLoading(false);
@@ -161,9 +161,9 @@ const CloudspayQRPayment = () => {
       // Redirect to success page (removed success alert)
       navigate('/payment/success');
     } catch (error) {
-      console.error('Error submitting deposit:', error);
-      console.error('Error response:', error.response?.data);
-      console.error('Error status:', error.response?.status);
+      // console.error('Error submitting deposit:', error);
+      // console.error('Error response:', error.response?.data);
+      // console.error('Error status:', error.response?.status);
       
       if (error.response && error.response.data && error.response.data.error) {
         alert(error.response.data.error);
@@ -213,7 +213,7 @@ const CloudspayQRPayment = () => {
                 alt="Cloudspay QR Code" 
                 className="w-full h-full object-contain"
                 onError={(e) => {
-                  console.error('Failed to load QR image:', qrCodeData.qrImage);
+                  // console.error('Failed to load QR image:', qrCodeData.qrImage);
                 }}
               />
             ) : (

@@ -72,7 +72,7 @@ router.post('/request', authenticateToken, async (req, res) => {
       const kycRecord = await KYC.findOne({ userId: user._id });
       kycApproved = kycRecord?.status === 'Approved';
     } catch (kycErr) {
-      console.error('Error fetching KYC status from DB:', kycErr);
+      // console.error('Error fetching KYC status from DB:', kycErr);
       kycApproved = false;
     }
     
@@ -88,7 +88,7 @@ router.post('/request', authenticateToken, async (req, res) => {
       const deposits = await Deposit.find({ userId: user._id, status: 'approved' });
       approvedAmount = deposits.reduce((sum, d) => sum + d.amount, 0);
     } catch (depErr) {
-      console.error('Error fetching deposits from DB:', depErr);
+      // console.error('Error fetching deposits from DB:', depErr);
       approvedAmount = 0;
     }
     
@@ -194,34 +194,34 @@ router.post('/request', authenticateToken, async (req, res) => {
     });
     
     // ── DEDUCTION LOGIC (Two Wallet System) ─────────────────────────────
-    console.log('=== WITHDRAWAL DEDUCTION START ===');
-    console.log('Withdrawal Amount:', amount);
-    console.log('Before Deduction - Main Balance:', mainBalance);
-    console.log('Before Deduction - Compound Balance:', compoundBalance);
-    console.log('Earnings:', earnings);
+    // console.log('=== WITHDRAWAL DEDUCTION START ===');
+    // console.log('Withdrawal Amount:', amount);
+    // console.log('Before Deduction - Main Balance:', mainBalance);
+    // console.log('Before Deduction - Compound Balance:', compoundBalance);
+    // console.log('Earnings:', earnings);
     
     if (amount <= earnings) {
       // Case A: deduct only from compound (earnings side)
       user.quantify = compoundBalance - amount;
       // user.balance stays unchanged
-      console.log('Case A: Deducting from earnings only');
-      console.log('  user.balance unchanged:', user.balance);
-      console.log('  user.quantify:', compoundBalance, '-', amount, '=', user.quantify);
+      // console.log('Case A: Deducting from earnings only');
+      // console.log('  user.balance unchanged:', user.balance);
+      // console.log('  user.quantify:', compoundBalance, '-', amount, '=', user.quantify);
 
     } else {
       // Case B: exhaust all earnings first, then deduct rest from main
       const remainingAfterEarnings = amount - earnings;
       user.balance  = mainBalance - remainingAfterEarnings;
       user.quantify = user.balance; // compound resets to new main (0 earnings left)
-      console.log('Case B: Exhausted earnings, deducting from main');
-      console.log('  remainingAfterEarnings:', remainingAfterEarnings);
-      console.log('  user.balance:', mainBalance, '-', remainingAfterEarnings, '=', user.balance);
-      console.log('  user.quantify reset to:', user.quantify);
+      // console.log('Case B: Exhausted earnings, deducting from main');
+      // console.log('  remainingAfterEarnings:', remainingAfterEarnings);
+      // console.log('  user.balance:', mainBalance, '-', remainingAfterEarnings, '=', user.balance);
+      // console.log('  user.quantify reset to:', user.quantify);
     }
 
-    console.log('After Deduction - Main Balance:', user.balance);
-    console.log('After Deduction - Compound Balance:', user.quantify);
-    console.log('=== WITHDRAWAL DEDUCTION END ===');
+    // console.log('After Deduction - Main Balance:', user.balance);
+    // console.log('After Deduction - Compound Balance:', user.quantify);
+    // console.log('=== WITHDRAWAL DEDUCTION END ===');
 
     // Sync quantify model if it exists
     const Quantify = require('../models/Quantify');
@@ -239,12 +239,12 @@ router.post('/request', authenticateToken, async (req, res) => {
       quantifyData.lastActivityDate = new Date();
       quantifyData.isQuantifying   = false;  // Reset quantifying on withdrawal
       
-      console.log('✅ Quantify data synced:', {
-        balance: quantifyData.balance,
-        totalRevenue: quantifyData.totalRevenue,
-        todayEarning: quantifyData.todayEarning,
-        isQuantifying: quantifyData.isQuantifying
-      });
+      // console.log('✅ Quantify data synced:', {
+      //   balance: quantifyData.balance,
+      //   totalRevenue: quantifyData.totalRevenue,
+      //   todayEarning: quantifyData.todayEarning,
+      //   isQuantifying: quantifyData.isQuantifying
+      // });
       
       await quantifyData.save();
     }
@@ -252,7 +252,7 @@ router.post('/request', authenticateToken, async (req, res) => {
     await withdrawalRequest.save();
     await user.save();
     
-    console.log('✅ User saved with - balance:', user.balance, ', quantify:', user.quantify);
+    // console.log('✅ User saved with - balance:', user.balance, ', quantify:', user.quantify);
     
     res.json({ 
       message: 'Withdrawal request submitted successfully',
@@ -264,7 +264,7 @@ router.post('/request', authenticateToken, async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error creating withdrawal request:', error);
+    // console.error('Error creating withdrawal request:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -283,7 +283,7 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
     
     res.json(requests);
   } catch (error) {
-    console.error('Error fetching withdrawal requests:', error);
+    // console.error('Error fetching withdrawal requests:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -301,7 +301,7 @@ router.get('/', authenticateToken, async (req, res) => {
     
     res.json(requests);
   } catch (error) {
-    console.error('Error fetching withdrawal requests:', error);
+    // console.error('Error fetching withdrawal requests:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -386,7 +386,7 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
       request 
     });
   } catch (error) {
-    console.error('Error updating withdrawal request:', error);
+    // console.error('Error updating withdrawal request:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -407,7 +407,7 @@ router.get('/all', authenticateToken, async (req, res) => {
     const withdrawals = await WithdrawalRequest.find().sort({ createdAt: -1 }).populate('userId', 'name phone email');
     res.json(withdrawals);
   } catch (error) {
-    console.error('Error fetching all withdrawals:', error);
+    // console.error('Error fetching all withdrawals:', error);
     res.status(500).json({ error: 'Failed to fetch withdrawals' });
   }
 });
