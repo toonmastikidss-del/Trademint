@@ -992,11 +992,37 @@ const Withdraw = () => {
                   }
                 );
               } catch (error) {
-                // ── FIX 2: Auto-logout on 403 ──────────────────────────────
-                handleAuthError(error.response?.status);
-                const errorMessage = error.response?.data?.error || 'Failed to submit withdrawal request. Please try again.';
-                showAlert('Error', errorMessage, 'error');
                 console.error('Withdrawal error:', error);
+                
+                // ── FIX: Don't logout on invalid withdrawal password ──────────
+                // 401 can mean TWO things:
+                //   1. Invalid JWT token → logout
+                //   2. Invalid withdrawal password → show error modal
+                // We need to check the error message to differentiate
+                
+                const errorMessage = error.response?.data?.error || 'Failed to submit withdrawal request. Please try again.';
+                
+                // Check if it's a token authentication error (not password error)
+                if (error.response?.status === 403) {
+                  // 403 = Invalid/expired JWT token → logout
+                  handleAuthError(403);
+                  showAlert('Session Expired', 'Please login again', 'error');
+                } else if (error.response?.status === 401) {
+                  // 401 could be invalid password OR invalid token
+                  // Check the error message to differentiate
+                  if (errorMessage.toLowerCase().includes('password')) {
+                    // ❌ Wrong withdrawal password → show error modal (NO logout)
+                    showAlert('Invalid Password', errorMessage, 'error');
+                  } else {
+                    // Token authentication failed → logout
+                    handleAuthError(401);
+                    showAlert('Session Expired', 'Please login again', 'error');
+                  }
+                } else {
+                  // Other errors (400, 500, etc.) → just show error
+                  showAlert('Error', errorMessage, 'error');
+                }
+                
                 setSubmittingWithdrawal(false);
               }
             }}

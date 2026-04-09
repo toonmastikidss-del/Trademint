@@ -228,19 +228,19 @@ router.post('/request', authenticateToken, async (req, res) => {
     if (quantifyData) {
       const wasQuantifyingActive = quantifyData.isQuantifying;
       
+      // ── FIX: Update quantify data WITHOUT recalculating earnings ──────────
+      // Pehle deduction ho chuka hai (upar), ab sirf sync karna hai
+      // Earnings recalculate MAT karo, warna deduction undo ho jayega!
+      
       quantifyData.mode            = 'current';
       quantifyData.balance         = user.balance;
-      quantifyData.totalRevenue    = user.quantify;
+      quantifyData.totalRevenue    = user.quantify;  // Use already-deducted value
       quantifyData.todayEarning    = 0;
       quantifyData.lastActivityDate = new Date();
+      quantifyData.isQuantifying   = false;  // Reset quantifying on withdrawal
       
-      if (wasQuantifyingActive) {
-        const earning               = user.balance * 0.06;
-        quantifyData.todayEarning   = earning;
-        quantifyData.totalRevenue   = user.balance + earning;
-        quantifyData.isQuantifying  = true;
-        user.quantify               = quantifyData.totalRevenue;
-      }
+      // ❌ WRONG: Don't recalculate earnings here - it undoes the deduction!
+      // ✅ CORRECT: Keep todayEarning = 0, totalRevenue = user.quantify
       
       await quantifyData.save();
     }
