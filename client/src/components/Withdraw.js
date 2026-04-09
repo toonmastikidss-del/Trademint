@@ -787,6 +787,7 @@ const Withdraw = () => {
           </div>
           <ul className="space-y-3">
             {[
+              "Today's quantifying total revenue will be available for withdrawal after 24 hours.",
               "Withdrawals are processed within 10-30 minutes.",
               "Ensure your bank details are correct to avoid failure.",
               "Minimum withdrawal amount is ₹100.",
