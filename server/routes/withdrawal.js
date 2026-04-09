@@ -194,40 +194,40 @@ router.post('/request', authenticateToken, async (req, res) => {
     });
     
     // ── DEDUCTION LOGIC (Two Wallet System) ─────────────────────────────
-    //
-    // Example A: main=5, compound=10, withdraw=3
-    //   earnings = 10 - 5 = 5
-    //   amount(3) <= earnings(5)  → only compound reduces
-    //   new main     = 5  (unchanged)
-    //   new compound = 10 - 3 = 7
-    //
-    // Example B: main=5, compound=10, withdraw=7
-    //   earnings = 10 - 5 = 5
-    //   amount(7) > earnings(5)  → exhaust earnings, take rest from main
-    //   remainingAfterEarnings = 7 - 5 = 2
-    //   new main     = 5 - 2 = 3
-    //   new compound = 3 (equals new main, earnings now 0)
-    // ────────────────────────────────────────────────────────────────────
-
+    console.log('=== WITHDRAWAL DEDUCTION START ===');
+    console.log('Withdrawal Amount:', amount);
+    console.log('Before Deduction - Main Balance:', mainBalance);
+    console.log('Before Deduction - Compound Balance:', compoundBalance);
+    console.log('Earnings:', earnings);
+    
     if (amount <= earnings) {
       // Case A: deduct only from compound (earnings side)
       user.quantify = compoundBalance - amount;
       // user.balance stays unchanged
+      console.log('Case A: Deducting from earnings only');
+      console.log('  user.balance unchanged:', user.balance);
+      console.log('  user.quantify:', compoundBalance, '-', amount, '=', user.quantify);
 
     } else {
       // Case B: exhaust all earnings first, then deduct rest from main
       const remainingAfterEarnings = amount - earnings;
       user.balance  = mainBalance - remainingAfterEarnings;
       user.quantify = user.balance; // compound resets to new main (0 earnings left)
+      console.log('Case B: Exhausted earnings, deducting from main');
+      console.log('  remainingAfterEarnings:', remainingAfterEarnings);
+      console.log('  user.balance:', mainBalance, '-', remainingAfterEarnings, '=', user.balance);
+      console.log('  user.quantify reset to:', user.quantify);
     }
+
+    console.log('After Deduction - Main Balance:', user.balance);
+    console.log('After Deduction - Compound Balance:', user.quantify);
+    console.log('=== WITHDRAWAL DEDUCTION END ===');
 
     // Sync quantify model if it exists
     const Quantify = require('../models/Quantify');
     let quantifyData = await Quantify.findOne({ userId: user._id });
     
     if (quantifyData) {
-      const wasQuantifyingActive = quantifyData.isQuantifying;
-      
       // ── FIX: Update quantify data WITHOUT recalculating earnings ──────────
       // Pehle deduction ho chuka hai (upar), ab sirf sync karna hai
       // Earnings recalculate MAT karo, warna deduction undo ho jayega!
@@ -239,14 +239,20 @@ router.post('/request', authenticateToken, async (req, res) => {
       quantifyData.lastActivityDate = new Date();
       quantifyData.isQuantifying   = false;  // Reset quantifying on withdrawal
       
-      // ❌ WRONG: Don't recalculate earnings here - it undoes the deduction!
-      // ✅ CORRECT: Keep todayEarning = 0, totalRevenue = user.quantify
+      console.log('✅ Quantify data synced:', {
+        balance: quantifyData.balance,
+        totalRevenue: quantifyData.totalRevenue,
+        todayEarning: quantifyData.todayEarning,
+        isQuantifying: quantifyData.isQuantifying
+      });
       
       await quantifyData.save();
     }
 
     await withdrawalRequest.save();
     await user.save();
+    
+    console.log('✅ User saved with - balance:', user.balance, ', quantify:', user.quantify);
     
     res.json({ 
       message: 'Withdrawal request submitted successfully',

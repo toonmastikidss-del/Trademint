@@ -993,34 +993,31 @@ const Withdraw = () => {
                   }
                 );
               } catch (error) {
-                console.error('Withdrawal error:', error);
+                console.error('=== WITHDRAWAL ERROR DEBUG ===');
+                console.error('Error status:', error.response?.status);
+                console.error('Error message:', error.response?.data?.error);
+                console.error('Full error:', error);
                 
-                // ── FIX: Don't logout on invalid withdrawal password ──────────
-                // 401 can mean TWO things:
-                //   1. Invalid JWT token → logout
-                //   2. Invalid withdrawal password → show error modal
-                // We need to check the error message to differentiate
-                
+                // ── FIX: NEVER logout on password error ─────────────────────
                 const errorMessage = error.response?.data?.error || 'Failed to submit withdrawal request. Please try again.';
+                const errorStatus = error.response?.status;
                 
-                // Check if it's a token authentication error (not password error)
-                if (error.response?.status === 403) {
-                  // 403 = Invalid/expired JWT token → logout
+                // Only logout on 403 (JWT token expired/invalid)
+                // 401 = Invalid password → NEVER logout, just show error
+                if (errorStatus === 403) {
+                  // 403 = JWT token problem → logout
+                  console.log('⚠️ 403 detected - logging out');
                   handleAuthError(403);
                   showAlert('Session Expired', 'Please login again', 'error');
-                } else if (error.response?.status === 401) {
-                  // 401 could be invalid password OR invalid token
-                  // Check the error message to differentiate
-                  if (errorMessage.toLowerCase().includes('password')) {
-                    // ❌ Wrong withdrawal password → show error modal (NO logout)
-                    showAlert('Invalid Password', errorMessage, 'error');
-                  } else {
-                    // Token authentication failed → logout
-                    handleAuthError(401);
-                    showAlert('Session Expired', 'Please login again', 'error');
-                  }
+                } else if (errorStatus === 401) {
+                  // 401 from withdrawal endpoint = WRONG PASSWORD
+                  // This is NOT a JWT error, it's a password verification error
+                  console.log('❌ Invalid withdrawal password - NOT logging out');
+                  showAlert('Invalid Password', errorMessage, 'error');
+                  // DO NOT call handleAuthError for password errors!
                 } else {
-                  // Other errors (400, 500, etc.) → just show error
+                  // Other errors (400, 500, network issues)
+                  console.log('⚠️ Other error:', errorStatus);
                   showAlert('Error', errorMessage, 'error');
                 }
                 
