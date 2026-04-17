@@ -26,6 +26,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
   const [viewMode, setViewMode] = useState('card'); // 'card' or 'table'
   const [uploadMethod, setUploadMethod] = useState('file'); // 'file' or 'base64'
+  const [formType, setFormType] = useState('qr'); // 'qr' or 'account' - Toggle between QR and Account forms
 
   // Fetch all QR codes
   const fetchQRCodes = async () => {
@@ -192,6 +193,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
         paymentMode: qrCode.paymentMode || 'qr'
       });
       setPreviewImage(qrCode.qrImage);
+      setFormType(qrCode.paymentMode || 'qr'); // Set form type based on existing data
       setSelectedQR(qrCode);
     } else {
       setFormData({
@@ -207,6 +209,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
         paymentMode: 'qr'
       });
       setPreviewImage('');
+      setFormType('qr'); // Reset to QR form for new entries
       setSelectedQR(null);
     }
     setShowEditModal(true);
@@ -216,8 +219,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
   const saveQRCode = async () => {
     console.log('💾 saveQRCode called');
     console.log('📋 formData:', formData);
-    console.log('📤 uploadMethod:', uploadMethod);
-    console.log('🖼️ previewImage:', previewImage);
+    console.log('📤 formType:', formType);
     
     try {
       if (!formData.paymentMethod) {
@@ -225,30 +227,49 @@ const QRManagement = ({ theme, isDarkMode }) => {
         return;
       }
 
-      if (!formData.upiId || formData.upiId.trim() === '') {
-        showAlert('UPI ID is required. Please enter a valid UPI ID (e.g., yourname@paytm)', 'error');
-        return;
+      // Validation based on form type
+      if (formType === 'qr') {
+        if (!formData.upiId || formData.upiId.trim() === '') {
+          showAlert('UPI ID is required. Please enter a valid UPI ID (e.g., yourname@paytm)', 'error');
+          return;
+        }
+
+        const upiPattern = /^[\w.-]+@[\w.-]+$/;
+        if (!upiPattern.test(formData.upiId)) {
+          showAlert('Invalid UPI ID format. Example: yourname@paytm, business@phonepe', 'error');
+          return;
+        }
+
+        if (uploadMethod === 'file' && !previewImage) {
+          showAlert('Please upload a QR code image', 'error');
+          return;
+        }
+
+        if (uploadMethod === 'base64' && !formData.qrImage) {
+          showAlert('Please provide QR code image data', 'error');
+          return;
+        }
+      } else if (formType === 'account') {
+        if (!formData.bankName || formData.bankName.trim() === '') {
+          showAlert('Bank Name is required', 'error');
+          return;
+        }
+        if (!formData.accountName || formData.accountName.trim() === '') {
+          showAlert('Account Holder Name is required', 'error');
+          return;
+        }
+        if (!formData.accountNumber || formData.accountNumber.trim() === '') {
+          showAlert('Account Number is required', 'error');
+          return;
+        }
+        if (!formData.ifscCode || formData.ifscCode.trim() === '') {
+          showAlert('IFSC Code is required', 'error');
+          return;
+        }
       }
 
-      // Validate UPI ID format
-      const upiPattern = /^[\w.-]+@[\w.-]+$/;
-      if (!upiPattern.test(formData.upiId)) {
-        showAlert('Invalid UPI ID format. Example: yourname@paytm, business@phonepe', 'error');
-        return;
-      }
-
-      if (uploadMethod === 'file' && !previewImage) {
-        showAlert('Please upload a QR code image', 'error');
-        return;
-      }
-
-      if (uploadMethod === 'base64' && !formData.qrImage) {
-        showAlert('Please provide QR code image data', 'error');
-        return;
-      }
-
-      if (uploadMethod === 'file') {
-        // Handle file upload
+      if (formType === 'qr' && uploadMethod === 'file') {
+        // Handle file upload for QR
         const fileInput = document.getElementById('qrImageUpload');
         if (fileInput && fileInput.files[0]) {
           const success = await handleFileUpload(fileInput.files[0]);
@@ -260,29 +281,45 @@ const QRManagement = ({ theme, isDarkMode }) => {
           return;
         }
       } else {
-        // Handle base64 data
+        // Handle base64 data or account details
         const adminToken = localStorage.getItem('adminToken');
         const adminData = JSON.parse(localStorage.getItem('adminData'));
         const adminId = adminData?.admin?._id || adminData?._id;
 
-        const response = await axios.post(`${API_CONFIG.BASE_URL}/api/qr/qrcodes/update`, {
-          ...formData,
+        const dataToSend = {
+          paymentMethod: formData.paymentMethod,
+          paymentMode: formType,
           adminId
-        }, {
+        };
+
+        // Add form-specific data
+        if (formType === 'qr') {
+          dataToSend.qrImage = uploadMethod === 'file' ? previewImage : formData.qrImage;
+          dataToSend.upiId = formData.upiId;
+        } else if (formType === 'account') {
+          dataToSend.bankName = formData.bankName;
+          dataToSend.accountName = formData.accountName;
+          dataToSend.accountNumber = formData.accountNumber;
+          dataToSend.ifscCode = formData.ifscCode;
+          dataToSend.minAmount = formData.minAmount || 0;
+          dataToSend.maxAmount = formData.maxAmount || 0;
+        }
+
+        const response = await axios.post(`${API_CONFIG.BASE_URL}/api/qr/qrcodes/update`, dataToSend, {
           headers: { Authorization: `Bearer ${adminToken}` }
         });
 
         if (response.data && response.data.message) {
           showAlert(response.data.message, 'success');
         } else {
-          showAlert('QR code updated successfully', 'success');
+          showAlert(`${formType === 'qr' ? 'QR Code' : 'Bank Account'} updated successfully`, 'success');
         }
         setShowEditModal(false);
         fetchQRCodes();
       }
     } catch (error) {
-      console.error('❌ Error saving QR code:', error);
-      const errorMessage = error.response?.data?.message || error.message || 'Failed to save QR code';
+      console.error('❌ Error saving:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to save';
       showAlert(errorMessage, 'error');
     }
   };
@@ -678,7 +715,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
           <div className={`${theme.cardBg} border ${theme.border} rounded-2xl sm:rounded-3xl md:rounded-[2.5rem] p-4 sm:p-6 md:p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto`}>
             <div className="flex justify-between items-center mb-4 sm:mb-6">
               <h3 className={`text-lg sm:text-xl font-bold ${theme.textMain}`}>
-                {selectedQR ? 'Edit QR Code' : 'Add New QR Code'}
+                {selectedQR ? (formType === 'qr' ? 'Edit QR Code' : 'Edit Bank Account') : 'Add Payment Method'}
               </h3>
               <button 
                 onClick={() => setShowEditModal(false)}
@@ -686,6 +723,37 @@ const QRManagement = ({ theme, isDarkMode }) => {
               >
                 <X size={18} className={`sm:w-5 sm:h-5 ${theme.textDim}`} />
               </button>
+            </div>
+
+            {/* Toggle Switch - QR Code vs Bank Account */}
+            <div className="mb-6">
+              <label className={`block text-[10px] sm:text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
+                Payment Type
+              </label>
+              <div className="flex bg-gray-800 rounded-xl p-1">
+                <button
+                  onClick={() => setFormType('qr')}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                    formType === 'qr' 
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <QrCode size={18} />
+                  QR Code
+                </button>
+                <button
+                  onClick={() => setFormType('account')}
+                  className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                    formType === 'account' 
+                      ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-lg' 
+                      : 'text-gray-400 hover:text-white'
+                  }`}
+                >
+                  <CreditCard size={18} />
+                  Bank Account
+                </button>
+              </div>
             </div>
 
             <div className="space-y-4 sm:space-y-6">
@@ -709,171 +777,135 @@ const QRManagement = ({ theme, isDarkMode }) => {
                   ))}
                 </select>
                 <p className={`text-[10px] mt-1.5 ${theme.textDim}`}>
-                  📌 Currently only "General" QR is supported for all payment methods
+                  📌 Currently only "General" is supported for all payment methods
                 </p>
               </div>
 
-              {/* Upload Method Toggle */}
-              <div>
-                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
-                  Upload Method <span className="text-red-500">*</span>
-                </label>
-                <div className="flex bg-gray-800 rounded-xl p-1">
-                  <button
-                    onClick={() => setUploadMethod('file')}
-                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${
-                      uploadMethod === 'file' 
-                        ? 'bg-[#49bace] text-white' 
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    📁 File Upload
-                  </button>
-                  <button
-                    onClick={() => setUploadMethod('base64')}
-                    className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${
-                      uploadMethod === 'base64' 
-                        ? 'bg-[#49bace] text-white' 
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    🔗 Base64 Data
-                  </button>
-                </div>
-              </div>
-
-              {/* QR Image Upload */}
-              <div>
-                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
-                  {uploadMethod === 'file' ? 'Upload QR Code Image' : 'QR Code Image Data'} <span className="text-red-500">*</span>
-                </label>
-                
-                {uploadMethod === 'file' ? (
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        className="hidden"
-                        id="qrImageUpload"
-                      />
-                      <label
-                        htmlFor="qrImageUpload"
-                        className={`block w-full ${theme.innerCard} border-2 border-dashed ${theme.border} rounded-2xl py-8 px-4 text-center cursor-pointer hover:border-[#49bace] transition-all`}
+              {/* QR Code Form Fields */}
+              {formType === 'qr' && (
+                <>
+                  {/* Upload Method Toggle */}
+                  <div>
+                    <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
+                      Upload Method <span className="text-red-500">*</span>
+                    </label>
+                    <div className="flex bg-gray-800 rounded-xl p-1">
+                      <button
+                        onClick={() => setUploadMethod('file')}
+                        className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${
+                          uploadMethod === 'file' 
+                            ? 'bg-[#49bace] text-white' 
+                            : 'text-gray-400 hover:text-white'
+                        }`}
                       >
-                        <Upload size={24} className={`${theme.textDim} mx-auto mb-2`} />
-                        <p className={`text-sm ${theme.textDim}`}>Click to upload QR image</p>
-                        <p className={`text-xs ${theme.textDim} mt-1`}>PNG, JPG, GIF up to 5MB</p>
-                      </label>
-                      {previewImage && (
-                        <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
-                          ✅ Image selected successfully
-                        </p>
-                      )}
+                        📁 File Upload
+                      </button>
+                      <button
+                        onClick={() => setUploadMethod('base64')}
+                        className={`flex-1 py-2 px-4 rounded-lg text-sm font-bold transition-all ${
+                          uploadMethod === 'base64' 
+                            ? 'bg-[#49bace] text-white' 
+                            : 'text-gray-400 hover:text-white'
+                        }`}
+                      >
+                        🔗 Base64 Data
+                      </button>
                     </div>
-                    {previewImage && (
-                      <div className="w-full sm:w-48 h-48 flex-shrink-0 flex items-center justify-center bg-gray-800/50 rounded-xl p-2">
-                        <img 
-                          src={previewImage} 
-                          alt="Preview" 
-                          className="w-full h-full object-contain"
-                        />
+                  </div>
+
+                  {/* QR Image Upload */}
+                  <div>
+                    <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
+                      {uploadMethod === 'file' ? 'Upload QR Code Image' : 'QR Code Image Data'} <span className="text-red-500">*</span>
+                    </label>
+                    
+                    {uploadMethod === 'file' ? (
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            className="hidden"
+                            id="qrImageUpload"
+                          />
+                          <label
+                            htmlFor="qrImageUpload"
+                            className={`block w-full ${theme.innerCard} border-2 border-dashed ${theme.border} rounded-2xl py-8 px-4 text-center cursor-pointer hover:border-[#49bace] transition-all`}
+                          >
+                            <Upload size={24} className={`${theme.textDim} mx-auto mb-2`} />
+                            <p className={`text-sm ${theme.textDim}`}>Click to upload QR image</p>
+                            <p className={`text-xs ${theme.textDim} mt-1`}>PNG, JPG, GIF up to 5MB</p>
+                          </label>
+                          {previewImage && (
+                            <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
+                              ✅ Image selected successfully
+                            </p>
+                          )}
+                        </div>
+                        {previewImage && (
+                          <div className="w-full sm:w-48 h-48 flex-shrink-0 flex items-center justify-center bg-gray-800/50 rounded-xl p-2">
+                            <img 
+                              src={previewImage} 
+                              alt="Preview" 
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col sm:flex-row gap-4">
+                        <div className="flex-1">
+                          <textarea
+                            name="qrImage"
+                            value={formData.qrImage}
+                            onChange={handleInputChange}
+                            placeholder="Paste base64 image data or image URL"
+                            rows="4"
+                            className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all resize-none`}
+                          />
+                        </div>
+                        {formData.qrImage && (
+                          <div className="w-full sm:w-48 h-48 flex-shrink-0 flex items-center justify-center bg-gray-800/50 rounded-xl p-2">
+                            <img 
+                              src={formData.qrImage} 
+                              alt="Preview" 
+                              className="w-full h-full object-contain"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                ) : (
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <div className="flex-1">
-                      <textarea
-                        name="qrImage"
-                        value={formData.qrImage}
-                        onChange={handleInputChange}
-                        placeholder="Paste base64 image data or image URL"
-                        rows="4"
-                        className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all resize-none`}
-                      />
-                    </div>
-                    {formData.qrImage && (
-                      <div className="w-full sm:w-48 h-48 flex-shrink-0 flex items-center justify-center bg-gray-800/50 rounded-xl p-2">
-                        <img 
-                          src={formData.qrImage} 
-                          alt="Preview" 
-                          className="w-full h-full object-contain"
-                        />
-                      </div>
-                    )}
+
+                  {/* UPI ID */}
+                  <div>
+                    <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
+                      UPI ID <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="upiId"
+                      value={formData.upiId}
+                      onChange={handleInputChange}
+                      placeholder="e.g., yourname@paytm, business@phonepe, name@upi"
+                      required
+                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                    />
+                    <p className={`text-[10px] mt-2 ${theme.textDim}`}>
+                      ⚠️ Required: This UPI ID will be displayed on payment pages
+                    </p>
                   </div>
-                )}
-              </div>
+                </>
+              )}
 
-              {/* UPI ID */}
-              <div>
-                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
-                  UPI ID <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="upiId"
-                  value={formData.upiId}
-                  onChange={handleInputChange}
-                  placeholder="e.g., yourname@paytm, business@phonepe, name@upi"
-                  required
-                  className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
-                />
-                <p className={`text-[10px] mt-2 ${theme.textDim}`}>
-                  ⚠️ Required: This UPI ID will be displayed on all payment pages for users to copy and pay
-                </p>
-              </div>
-
-              {/* Payment Mode Toggle */}
-              <div>
-                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
-                  Payment Display Mode
-                </label>
-                <div className="flex bg-gray-800 rounded-xl p-1">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, paymentMode: 'qr' })}
-                    className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                      formData.paymentMode === 'qr' 
-                        ? 'bg-[#49bace] text-white' 
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <QrCode size={16} />
-                    QR Code
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, paymentMode: 'account' })}
-                    className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
-                      formData.paymentMode === 'account' 
-                        ? 'bg-[#49bace] text-white' 
-                        : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    <CreditCard size={16} />
-                    Account Details
-                  </button>
-                </div>
-                <p className={`text-[10px] mt-2 ${theme.textDim}`}>
-                  📌 Select what to show on payment page - QR Code or Bank Account Details
-                </p>
-              </div>
-
-              {/* Account Details Section */}
-              {formData.paymentMode === 'account' && (
-                <div className="space-y-4 p-4 bg-gray-800/30 rounded-2xl border border-gray-700">
-                  <h4 className={`text-sm font-bold ${theme.textMain} flex items-center gap-2`}>
-                    <Banknote size={16} className="text-[#49bace]" />
-                    Bank Account Details
-                  </h4>
-
+              {/* Bank Account Form Fields */}
+              {formType === 'account' && (
+                <>
                   {/* Bank Name */}
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
-                      Bank Name
+                    <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
+                      Bank Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -881,14 +913,15 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       value={formData.bankName}
                       onChange={handleInputChange}
                       placeholder="e.g., State Bank of India"
-                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                      required
+                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
                     />
                   </div>
 
                   {/* Account Holder Name */}
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
-                      Account Holder Name
+                    <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
+                      Account Holder Name <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -896,14 +929,15 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       value={formData.accountName}
                       onChange={handleInputChange}
                       placeholder="e.g., John Doe"
-                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                      required
+                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
                     />
                   </div>
 
                   {/* Account Number */}
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
-                      Account Number
+                    <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
+                      Account Number <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -911,14 +945,15 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       value={formData.accountNumber}
                       onChange={handleInputChange}
                       placeholder="e.g., 1234567890"
-                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                      required
+                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
                     />
                   </div>
 
                   {/* IFSC Code */}
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
-                      IFSC Code
+                    <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
+                      IFSC Code <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -926,14 +961,15 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       value={formData.ifscCode}
                       onChange={handleInputChange}
                       placeholder="e.g., SBIN0001234"
-                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                      required
+                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
                     />
                   </div>
 
                   {/* Min & Max Amount */}
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
+                      <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
                         Min Amount (₹)
                       </label>
                       <input
@@ -941,12 +977,12 @@ const QRManagement = ({ theme, isDarkMode }) => {
                         name="minAmount"
                         value={formData.minAmount}
                         onChange={handleInputChange}
-                        placeholder="100"
-                        className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                        placeholder="0"
+                        className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
                       />
                     </div>
                     <div>
-                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
+                      <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
                         Max Amount (₹)
                       </label>
                       <input
@@ -954,29 +990,30 @@ const QRManagement = ({ theme, isDarkMode }) => {
                         name="maxAmount"
                         value={formData.maxAmount}
                         onChange={handleInputChange}
-                        placeholder="50000"
-                        className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                        placeholder="0"
+                        className={`w-full ${theme.innerCard} border ${theme.border} rounded-2xl py-3 px-4 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
                       />
                     </div>
                   </div>
-                </div>
+                </>
               )}
-            </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8">
-              <button
-                onClick={saveQRCode}
-                className="flex-1 py-3 sm:py-4 bg-[#49bace] text-white font-black rounded-xl sm:rounded-2xl uppercase tracking-widest text-[10px] sm:text-xs hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-[#49bace]/20 flex items-center justify-center gap-1.5 sm:gap-2"
-              >
-                <Save size={14} className="sm:w-4 sm:h-4" />
-                <span className="truncate">{selectedQR ? 'Update QR Code' : 'Save QR Code'}</span>
-              </button>
-              <button
-                onClick={() => setShowEditModal(false)}
-                className="flex-1 py-3 sm:py-4 bg-gray-500/10 text-gray-400 font-black rounded-xl sm:rounded-2xl uppercase tracking-widest text-[10px] sm:text-xs hover:bg-gray-500/20 transition-all"
-              >
-                Cancel
-              </button>
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8">
+                <button
+                  onClick={saveQRCode}
+                  className="flex-1 py-3 sm:py-4 bg-[#49bace] text-white font-black rounded-xl sm:rounded-2xl uppercase tracking-widest text-[10px] sm:text-xs hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg shadow-[#49bace]/20 flex items-center justify-center gap-1.5 sm:gap-2"
+                >
+                  <Save size={14} className="sm:w-4 sm:h-4" />
+                  <span className="truncate">{selectedQR ? 'Update' : 'Save'}</span>
+                </button>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 py-3 sm:py-4 bg-gray-500/10 text-gray-400 font-black rounded-xl sm:rounded-2xl uppercase tracking-widest text-[10px] sm:text-xs hover:bg-gray-500/20 transition-all"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
           </div>
         </div>
