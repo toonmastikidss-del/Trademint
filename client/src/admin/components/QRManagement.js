@@ -417,7 +417,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
                           <td className="py-4 px-4">
                             {qrCode ? (
                               <img 
-                                src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}?t=${Date.now()}`}
+                                src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}`}
                                 alt={`${method.name} QR`}
                                 className="w-16 h-16 object-contain border border-gray-700 rounded-lg"
                                 onError={(e) => {
@@ -553,11 +553,11 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       <div className="space-y-4">
                         <div className="flex justify-center">
                           <img 
-                            src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}?t=${Date.now()}`}
+                            src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}`}
                             alt={`${method.name} QR`}
                             className="w-32 h-32 object-contain border-2 border-gray-700 rounded-xl"
                             onError={(e) => {
-                              console.error('Failed to load QR image:', qrCode.qrImage);
+                              // console.error('Failed to load QR image:', qrCode.qrImage);
                               e.target.style.display = 'none';
                             }}
                           />

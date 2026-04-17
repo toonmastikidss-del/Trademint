@@ -209,7 +209,7 @@ const CloudspayQRPayment = () => {
               </div>
             ) : qrCodeData && qrCodeData.qrImage ? (
               <img 
-                src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}?t=${Date.now()}`}
+                src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
                 alt="Cloudspay QR Code" 
                 className="w-full h-full object-contain"
                 onError={(e) => {

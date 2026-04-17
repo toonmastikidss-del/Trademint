@@ -110,6 +110,11 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/admin/auth/login', authLimiter);
 
 app.use(express.json());
+
+// Serve QR code images from uploads folder
+app.use('/api/qr/qrcodes/image', express.static(path.join(__dirname, 'uploads/qrcodes')));
+
+// Serve other uploads with CORS headers
 app.use('/uploads', (req, res, next) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
