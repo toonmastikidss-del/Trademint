@@ -3910,20 +3910,22 @@ const AdminPanel = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>Full Name</p>
-                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.fullName}</p>
+                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.fullName || kycDetailsModal.kyc.userId?.name || 'N/A'}</p>
                       </div>
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>Mobile Number</p>
-                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.mobileNumber}</p>
+                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.mobileNumber || 'N/A'}</p>
                       </div>
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>Email Address</p>
-                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.emailAddress}</p>
+                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.emailAddress || 'N/A'}</p>
                       </div>
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>Submitted Date</p>
                         <p className={`text-sm font-bold ${theme.textMain}`}>
-                          {new Date(kycDetailsModal.kyc.submittedAt).toLocaleDateString()} at {new Date(kycDetailsModal.kyc.submittedAt).toLocaleTimeString()}
+                          {kycDetailsModal.kyc.submittedAt 
+                            ? `${new Date(kycDetailsModal.kyc.submittedAt).toLocaleDateString()} at ${new Date(kycDetailsModal.kyc.submittedAt).toLocaleTimeString()}`
+                            : 'N/A'}
                         </p>
                       </div>
                     </div>
@@ -3935,11 +3937,11 @@ const AdminPanel = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>Aadhar Number</p>
-                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.aadharNumber}</p>
+                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.aadharNumber || 'N/A'}</p>
                       </div>
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>PAN Number</p>
-                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.panNumber}</p>
+                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.panNumber || 'N/A'}</p>
                       </div>
                     </div>
                   </div>
@@ -3950,7 +3952,12 @@ const AdminPanel = () => {
                     <div>
                       <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>Full Address</p>
                       <p className={`text-sm font-bold ${theme.textMain}`}>
-                        {kycDetailsModal.kyc.address}, {kycDetailsModal.kyc.city}, {kycDetailsModal.kyc.state} - {kycDetailsModal.kyc.pinCode}
+                        {[
+                          kycDetailsModal.kyc.address,
+                          kycDetailsModal.kyc.city,
+                          kycDetailsModal.kyc.state,
+                          kycDetailsModal.kyc.pinCode
+                        ].filter(Boolean).join(', ') || 'N/A'}
                       </p>
                     </div>
                   </div>
@@ -3961,19 +3968,19 @@ const AdminPanel = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>Bank Name</p>
-                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.bankName}</p>
+                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.bankName || 'N/A'}</p>
                       </div>
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>Account Number</p>
-                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.accountNumber}</p>
+                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.accountNumber || 'N/A'}</p>
                       </div>
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>IFSC Code</p>
-                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.ifscCode}</p>
+                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.ifscCode || 'N/A'}</p>
                       </div>
                       <div>
                         <p className={`text-[10px] ${theme.textDim} uppercase font-bold mb-1`}>Branch Name</p>
-                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.branchName}</p>
+                        <p className={`text-sm font-bold ${theme.textMain}`}>{kycDetailsModal.kyc.branchName || 'N/A'}</p>
                       </div>
                     </div>
                   </div>
