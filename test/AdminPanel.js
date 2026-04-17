@@ -105,7 +105,7 @@ const AdminPanel = () => {
       
       setTasks(response.data);
     } catch (error) {
-      // console.error('Error fetching tasks:', error);
+      console.error('Error fetching tasks:', error);
     } finally {
       setLoadingTasks(false);
     }
@@ -116,7 +116,7 @@ const AdminPanel = () => {
     try {
       const adminToken = localStorage.getItem('adminToken');
       if (!adminToken) {
-        // console.error('No admin token found');
+        console.error('No admin token found');
         return;
       }
       
@@ -124,27 +124,27 @@ const AdminPanel = () => {
       
       // Fetch all data in parallel with better error handling
       const depositsRes = await axios.get(`${API_CONFIG.BASE_URL}/api/deposit/all`, { headers }).catch(err => {
-        // console.error('Failed to fetch deposits:', err.response?.data || err.message);
+        console.error('Failed to fetch deposits:', err.response?.data || err.message);
         return { data: [] };
       });
       
       const withdrawalsRes = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal/all`, { headers }).catch(err => {
-        // console.error('Failed to fetch withdrawals:', err.response?.data || err.message);
+        console.error('Failed to fetch withdrawals:', err.response?.data || err.message);
         return { data: [] };
       });
       
       const banksRes = await axios.get(`${API_CONFIG.BASE_URL}/api/bank/all`, { headers }).catch(err => {
-        // console.error('Failed to fetch banks:', err.response?.data || err.message);
+        console.error('Failed to fetch banks:', err.response?.data || err.message);
         return { data: [] };
       });
       
       const usersRes = await axios.get(`${API_CONFIG.BASE_URL}/api/admin/users`, { headers }).catch(err => {
-        // console.error('Failed to fetch users:', err.response?.data || err.message);
+        console.error('Failed to fetch users:', err.response?.data || err.message);
         return { data: { users: [] } };
       });
       
       const kycRes = await axios.get(`${API_CONFIG.BASE_URL}/api/kyc/all`, { headers }).catch(err => {
-        // console.error('Failed to fetch KYC:', err.response?.data || err.message);
+        console.error('Failed to fetch KYC:', err.response?.data || err.message);
         return { data: [] };
       });
       
@@ -292,7 +292,7 @@ const AdminPanel = () => {
         setDeposits(response.data);
         console.log('Successfully fetched deposits:', response.data.length, 'records');
       } else {
-        // console.warn('Empty response from deposits API');
+        console.warn('Empty response from deposits API');
         setDeposits([]);
       }
     } catch (error) {
@@ -1077,17 +1077,7 @@ const AdminPanel = () => {
         )
       );
       
-      // Refresh the approved withdrawals list if approved
-      if (action === 1) {
-        fetchApprovedWithdrawals();
-      }
-      
       alert(`Withdrawal request ${action === 1 ? 'approved' : 'rejected'} successfully`);
-      
-      // Refresh the list after 1 second
-      setTimeout(() => {
-        fetchWithdrawalRequests();
-      }, 1000);
     } catch (error) {
       console.error('Error updating withdrawal request:', error);
       alert(`Failed to ${action === 1 ? 'approve' : 'reject'} withdrawal request`);
@@ -1349,8 +1339,8 @@ const AdminPanel = () => {
           <div className="w-20 h-20 bg-[#49bace]/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
             <ListTodo size={40} className="text-[#49bace]" />
           </div>
-          <h4 className="text-xl font-bold text-white mb-2">Data Not Found</h4>
-          <p className="text-gray-500">No tasks available to display.</p>
+          <h4 className="text-xl font-bold text-white mb-2">No Tasks Found</h4>
+          <p className="text-gray-500">Create your first task to get started.</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -1587,8 +1577,8 @@ const AdminPanel = () => {
                 <div className="w-16 h-16 bg-gray-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <CheckCircle size={32} className="text-gray-500" />
                 </div>
-                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>Data Not Found</p>
-                <p className={`${theme.textDim} text-sm`}>No approved withdrawals available to display.</p>
+                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>No Approved Withdrawals</p>
+                <p className={`${theme.textDim} text-sm`}>No approved withdrawal requests found.</p>
               </div>
             )}
           </div>
@@ -1684,8 +1674,8 @@ const AdminPanel = () => {
                 <div className="w-16 h-16 bg-gray-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <Check size={32} className="text-gray-500" />
                 </div>
-                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>Data Not Found</p>
-                <p className={`${theme.textDim} text-sm`}>No approved deposits available to display.</p>
+                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>No Approved Deposits</p>
+                <p className={`${theme.textDim} text-sm`}>No approved deposit requests found.</p>
               </div>
             )}
           </div>
@@ -1831,8 +1821,8 @@ const AdminPanel = () => {
                 <div className="w-16 h-16 bg-gray-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <ListTodo size={32} className="text-gray-500" />
                 </div>
-                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>Data Not Found</p>
-                <p className={`${theme.textDim} text-sm`}>No user task records available to display.</p>
+                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>No User Task Records</p>
+                <p className={`${theme.textDim} text-sm`}>No task completion records found in the system.</p>
               </div>
             )}
           </div>
@@ -1862,8 +1852,8 @@ const AdminPanel = () => {
             <div className="w-20 h-20 bg-[#49bace]/10 rounded-3xl flex items-center justify-center mx-auto mb-4">
               <Landmark size={40} className="text-[#49bace]" />
             </div>
-            <h4 className={`text-xl font-bold ${theme.textMain} mb-2`}>Data Not Found</h4>
-            <p className={`${theme.textDim}`}>No bank requests available to display.</p>
+            <h4 className={`text-xl font-bold ${theme.textMain} mb-2`}>No Bank Requests Found</h4>
+            <p className={`${theme.textDim}`}>No users have submitted bank details yet.</p>
           </div>
         ) : (
           <>
@@ -2023,17 +2013,9 @@ const AdminPanel = () => {
       <div className={`${theme.cardBg} border ${theme.border} rounded-[2.5rem] p-8 shadow-2xl`}>
         <div className="flex justify-between items-center mb-8">
           <h3 className={`text-xl font-bold ${theme.textMain}`}>Pending Withdrawals</h3>
-          <div className="flex gap-2">
-            <span className="text-[10px] font-black bg-rose-500/10 text-rose-500 px-3 py-1 rounded-full uppercase tracking-widest">
-              {loadingWithdrawalRequests ? 'Loading...' : `${withdrawalRequests.filter(r => r.status === 'pending').length} Pending`}
-            </span>
-            <button 
-              onClick={fetchWithdrawalRequests}
-              className="px-4 py-2 bg-[#49bace] text-white text-xs font-black uppercase rounded-xl hover:scale-105 transition-all"
-            >
-              Refresh
-            </button>
-          </div>
+          <span className="text-[10px] font-black bg-rose-500/10 text-rose-500 px-3 py-1 rounded-full uppercase tracking-widest">
+            {loadingWithdrawalRequests ? 'Loading...' : `${withdrawalRequests.filter(r => r.status === 'pending').length} Pending`}
+          </span>
         </div>
         
         {loadingWithdrawalRequests ? (
@@ -2215,8 +2197,8 @@ const AdminPanel = () => {
                 <div className="w-16 h-16 bg-gray-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <ArrowDownLeft size={32} className="text-gray-500" />
                 </div>
-                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>Data Not Found</p>
-                <p className={`${theme.textDim} text-sm`}>No withdrawal requests available to display.</p>
+                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>No Withdrawal Requests</p>
+                <p className={`${theme.textDim} text-sm`}>No pending withdrawal requests at this time.</p>
               </div>
             )}
           </div>
@@ -2345,8 +2327,8 @@ const AdminPanel = () => {
                 <div className="w-16 h-16 bg-gray-500/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
                   <CreditCard size={32} className="text-gray-500" />
                 </div>
-                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>Data Not Found</p>
-                <p className={`${theme.textDim} text-sm`}>No deposit requests available to display.</p>
+                <p className={`text-lg font-bold ${theme.textMain} mb-2`}>No Deposit Requests</p>
+                <p className={`${theme.textDim} text-sm`}>No pending payment verification requests at this time.</p>
               </div>
             )}
           </div>
@@ -3425,7 +3407,7 @@ const AdminPanel = () => {
             </ResponsiveContainer>
           ) : (
             <div className="flex items-center justify-center h-[250px]">
-              <p className={`${theme.textDim} text-sm`}>Data Not Found - No KYC data available</p>
+              <p className={`${theme.textDim} text-sm`}>No KYC data available</p>
             </div>
           )}
         </div>
