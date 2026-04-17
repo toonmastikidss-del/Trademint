@@ -247,41 +247,32 @@ router.post('/qrcodes/upload', upload.single('qrImage'), async (req, res) => {
 // ✅ POST update QR code — verifyAdmin middleware
 router.post('/qrcodes/update', verifyAdmin, async (req, res) => {
   try {
-    const { paymentMethod, qrImage, upiId, bankName, accountName, accountNumber, ifscCode, minAmount, maxAmount, paymentMode } = req.body;
+    const { paymentMethod, qrImage, upiId, accountName, accountNumber, ifscCode } = req.body;
 
-    if (!paymentMethod) {
-      return res.status(400).json({ message: 'Payment method is required' });
+    if (!paymentMethod || !qrImage) {
+      return res.status(400).json({ message: 'Payment method and QR image are required' });
     }
 
-    const adminId = req.admin._id;
-
-    // Build update object dynamically
-    const updateData = {
-      lastUpdatedBy: adminId,
-      lastUpdated: new Date(),
-      isActive: true
-    };
-
-    // Only update fields that are provided
-    if (qrImage !== undefined) updateData.qrImage = qrImage;
-    if (upiId !== undefined) updateData.upiId = upiId;
-    if (bankName !== undefined) updateData.bankName = bankName;
-    if (accountName !== undefined) updateData.accountName = accountName;
-    if (accountNumber !== undefined) updateData.accountNumber = accountNumber;
-    if (ifscCode !== undefined) updateData.ifscCode = ifscCode;
-    if (minAmount !== undefined) updateData.minAmount = minAmount;
-    if (maxAmount !== undefined) updateData.maxAmount = maxAmount;
-    if (paymentMode !== undefined) updateData.paymentMode = paymentMode;
+    const adminId = req.admin._id; // ✅ Token se liya
 
     const updatedQRCode = await QRCode.findOneAndUpdate(
       { paymentMethod },
-      updateData,
+      {
+        qrImage,
+        upiId: upiId || '',
+        accountName: accountName || '',
+        accountNumber: accountNumber || '',
+        ifscCode: ifscCode || '',
+        lastUpdatedBy: adminId,
+        lastUpdated: new Date(),
+        isActive: true
+      },
       { new: true, upsert: true, runValidators: true }
     );
 
     res.json({ message: 'QR code updated successfully', qrCode: updatedQRCode });
   } catch (err) {
-    console.error('Error updating QR code:', err);
+    // console.error('Error updating QR code:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
