@@ -128,8 +128,8 @@ const AdminPanel = () => {
         return { data: [] };
       });
       
-      const withdrawalsRes = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal/all`, { headers }).catch(err => {
-        // console.error('Failed to fetch withdrawals:', err.response?.data || err.message);
+      const withdrawalsRes = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal`, { headers }).catch(err => {
+        console.error('Failed to fetch withdrawals:', err.response?.data || err.message);
         return { data: [] };
       });
       
@@ -149,30 +149,30 @@ const AdminPanel = () => {
       });
       
       // Calculate deposit stats
-      const deposits = depositsRes.data || [];
+      const deposits = Array.isArray(depositsRes.data) ? depositsRes.data : [];
       const pendingDeposits = deposits.filter(d => d.status === 'pending').length;
       const approvedDeposits = deposits.filter(d => d.status === 'approved').length;
       const rejectedDeposits = deposits.filter(d => d.status === 'rejected').length;
       const totalDepositsAmount = deposits.reduce((sum, d) => sum + (d.amount || 0), 0);
       
       // Calculate withdrawal stats
-      const withdrawals = withdrawalsRes.data || [];
+      const withdrawals = Array.isArray(withdrawalsRes.data) ? withdrawalsRes.data : [];
       const pendingWithdrawals = withdrawals.filter(w => w.status === 'pending').length;
       const approvedWithdrawals = withdrawals.filter(w => w.status === 'approved').length;
       const rejectedWithdrawals = withdrawals.filter(w => w.status === 'rejected').length;
       const totalWithdrawalsAmount = withdrawals.reduce((sum, w) => sum + (w.amount || 0), 0);
       
       // Calculate bank stats
-      const banks = banksRes.data || [];
+      const banks = Array.isArray(banksRes.data) ? banksRes.data : [];
       const verifiedBanks = banks.filter(b => b.status === 'Verified').length;
       const pendingBanks = banks.filter(b => b.status === 'Pending' || b.status === 'pending').length;
       
       // User stats
-      const users = usersRes.data?.users || [];
+      const users = Array.isArray(usersRes.data?.users) ? usersRes.data.users : [];
       const activeUsers = users.filter(u => u.isActive !== false).length;
       
       // KYC stats
-      const kycs = kycRes.data || [];
+      const kycs = Array.isArray(kycRes.data) ? kycRes.data : [];
       const kycPending = kycs.filter(k => k.status === 'pending').length;
       const kycApproved = kycs.filter(k => k.status === 'approved').length;
       const kycRejected = kycs.filter(k => k.status === 'rejected').length;

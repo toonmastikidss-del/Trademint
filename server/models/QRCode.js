@@ -15,6 +15,11 @@ const qrCodeSchema = new mongoose.Schema({
     type: String,
     default: ''
   },
+  // Account Details
+  bankName: {
+    type: String,
+    default: ''
+  },
   accountName: {
     type: String,
     default: ''
@@ -26,6 +31,20 @@ const qrCodeSchema = new mongoose.Schema({
   ifscCode: {
     type: String,
     default: ''
+  },
+  minAmount: {
+    type: Number,
+    default: 0
+  },
+  maxAmount: {
+    type: Number,
+    default: 0
+  },
+  // Payment Mode Toggle (QR or Account)
+  paymentMode: {
+    type: String,
+    enum: ['qr', 'account'],
+    default: 'qr'
   },
   isActive: {
     type: Boolean,
