@@ -309,6 +309,31 @@ const QRManagement = ({ theme, isDarkMode }) => {
     }
   };
 
+  // Toggle payment mode (QR vs Account)
+  const togglePaymentMode = async (paymentMethod) => {
+    try {
+      const adminToken = localStorage.getItem('adminToken');
+      const adminData = JSON.parse(localStorage.getItem('adminData'));
+      const adminId = adminData?.admin?._id || adminData?._id;
+      const currentQR = qrCodes.find(qr => qr.paymentMethod === paymentMethod);
+      const newMode = currentQR?.paymentMode === 'account' ? 'qr' : 'account';
+
+      const response = await axios.post(`${API_CONFIG.BASE_URL}/api/qr/qrcodes/update`, {
+        paymentMethod,
+        paymentMode: newMode,
+        adminId
+      }, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
+
+      showAlert(`Switched to ${newMode === 'account' ? 'Account Details' : 'QR Code'} mode`, 'success');
+      fetchQRCodes();
+    } catch (error) {
+      console.error('Error toggling payment mode:', error);
+      showAlert('Failed to update payment mode', 'error');
+    }
+  };
+
   // Delete QR code
   const deleteQRCode = async (paymentMethod) => {
     try {
@@ -416,10 +441,13 @@ const QRManagement = ({ theme, isDarkMode }) => {
                   <thead>
                     <tr className={`border-b ${theme.border}`}>
                       <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>Payment Method</th>
+                      <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>Payment Mode</th>
                       <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>QR Image</th>
                       <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>UPI ID</th>
+                      <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>Bank Name</th>
+                      <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>Account No</th>
+                      <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>IFSC</th>
                       <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>Status</th>
-                      <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>Last Updated</th>
                       <th className={`text-left py-2 px-3 sm:py-3 sm:px-4 ${theme.textDim} text-[10px] sm:text-xs font-black uppercase`}>Actions</th>
                     </tr>
                   </thead>
@@ -435,7 +463,21 @@ const QRManagement = ({ theme, isDarkMode }) => {
                             </div>
                           </td>
                           <td className="py-4 px-4">
-                            {qrCode ? (
+                            {qrCode && (
+                              <button
+                                onClick={() => togglePaymentMode(method.id)}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all ${
+                                  qrCode.paymentMode === 'account'
+                                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                                    : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                                }`}
+                              >
+                                {qrCode.paymentMode === 'account' ? '💳 Account' : '📱 QR Code'}
+                              </button>
+                            )}
+                          </td>
+                          <td className="py-4 px-4">
+                            {qrCode?.paymentMode === 'qr' && qrCode?.qrImage ? (
                               <img 
                                 src={qrCode.qrImage.startsWith('data:') ? qrCode.qrImage : `${API_CONFIG.BASE_URL}${qrCode.qrImage}`}
                                 alt={`${method.name} QR`}
@@ -452,8 +494,23 @@ const QRManagement = ({ theme, isDarkMode }) => {
                             )}
                           </td>
                           <td className="py-4 px-4">
-                            <span className={`text-sm ${qrCode?.upiId ? theme.textMain : theme.textDim}`}>
-                              {qrCode?.upiId || 'N/A'}
+                            <span className={`text-sm ${qrCode?.paymentMode === 'qr' && qrCode?.upiId ? theme.textMain : theme.textDim}`}>
+                              {qrCode?.paymentMode === 'qr' ? (qrCode?.upiId || 'N/A') : '-'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`text-sm ${qrCode?.paymentMode === 'account' && qrCode?.bankName ? theme.textMain : theme.textDim}`}>
+                              {qrCode?.paymentMode === 'account' ? (qrCode?.bankName || 'N/A') : '-'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`text-sm ${qrCode?.paymentMode === 'account' && qrCode?.accountNumber ? theme.textMain : theme.textDim}`}>
+                              {qrCode?.paymentMode === 'account' ? (qrCode?.accountNumber || 'N/A') : '-'}
+                            </span>
+                          </td>
+                          <td className="py-4 px-4">
+                            <span className={`text-sm ${qrCode?.paymentMode === 'account' && qrCode?.ifscCode ? theme.textMain : theme.textDim}`}>
+                              {qrCode?.paymentMode === 'account' ? (qrCode?.ifscCode || 'N/A') : '-'}
                             </span>
                           </td>
                           <td className="py-4 px-4">
@@ -470,14 +527,6 @@ const QRManagement = ({ theme, isDarkMode }) => {
                                 Not Set
                               </span>
                             )}
-                          </td>
-                          <td className="py-4 px-4">
-                            <div className={`text-xs ${theme.textDim}`}>
-                              {qrCode ? new Date(qrCode.lastUpdated).toLocaleDateString() : 'Never'}
-                              {qrCode?.lastUpdatedBy?.name && (
-                                <div className="mt-1">by {qrCode.lastUpdatedBy.name}</div>
-                              )}
-                            </div>
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex gap-2">
