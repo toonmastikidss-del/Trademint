@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { QrCode, Upload, Eye, EyeOff, Save, X, AlertCircle, CheckCircle, Table, Grid, Trash2 } from 'lucide-react';
+import { QrCode, Upload, Eye, EyeOff, Save, X, AlertCircle, CheckCircle, Table, Grid, Trash2, Copy, Banknote, CreditCard } from 'lucide-react';
 import axios from 'axios';
 import { API_CONFIG } from '../../config/apiConfig';
 
@@ -13,7 +13,14 @@ const QRManagement = ({ theme, isDarkMode }) => {
   const [formData, setFormData] = useState({
     paymentMethod: '',
     qrImage: '',
-    upiId: ''
+    upiId: '',
+    bankName: '',
+    accountName: '',
+    accountNumber: '',
+    ifscCode: '',
+    minAmount: '',
+    maxAmount: '',
+    paymentMode: 'qr'
   });
   const [previewImage, setPreviewImage] = useState('');
   const [alert, setAlert] = useState({ show: false, message: '', type: '' });
@@ -44,6 +51,16 @@ const QRManagement = ({ theme, isDarkMode }) => {
   const showAlert = (message, type) => {
     setAlert({ show: true, message, type });
     setTimeout(() => setAlert({ show: false, message: '', type: '' }), 3000);
+  };
+
+  // Copy to clipboard
+  const copyToClipboard = (text, label) => {
+    navigator.clipboard.writeText(text).then(() => {
+      showAlert(`${label} copied to clipboard!`, 'success');
+    }).catch(err => {
+      console.error('Failed to copy:', err);
+      showAlert('Failed to copy', 'error');
+    });
   };
 
   // Handle image upload preview
@@ -165,7 +182,14 @@ const QRManagement = ({ theme, isDarkMode }) => {
       setFormData({
         paymentMethod: qrCode.paymentMethod,
         qrImage: qrCode.qrImage,
-        upiId: qrCode.upiId || ''
+        upiId: qrCode.upiId || '',
+        bankName: qrCode.bankName || '',
+        accountName: qrCode.accountName || '',
+        accountNumber: qrCode.accountNumber || '',
+        ifscCode: qrCode.ifscCode || '',
+        minAmount: qrCode.minAmount || '',
+        maxAmount: qrCode.maxAmount || '',
+        paymentMode: qrCode.paymentMode || 'qr'
       });
       setPreviewImage(qrCode.qrImage);
       setSelectedQR(qrCode);
@@ -173,7 +197,14 @@ const QRManagement = ({ theme, isDarkMode }) => {
       setFormData({
         paymentMethod: 'General',
         qrImage: '',
-        upiId: ''
+        upiId: '',
+        bankName: '',
+        accountName: '',
+        accountNumber: '',
+        ifscCode: '',
+        minAmount: '',
+        maxAmount: '',
+        paymentMode: 'qr'
       });
       setPreviewImage('');
       setSelectedQR(null);
@@ -745,6 +776,142 @@ const QRManagement = ({ theme, isDarkMode }) => {
                   ⚠️ Required: This UPI ID will be displayed on all payment pages for users to copy and pay
                 </p>
               </div>
+
+              {/* Payment Mode Toggle */}
+              <div>
+                <label className={`block text-xs font-black uppercase tracking-widest mb-2 ${theme.textDim}`}>
+                  Payment Display Mode
+                </label>
+                <div className="flex bg-gray-800 rounded-xl p-1">
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, paymentMode: 'qr' })}
+                    className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                      formData.paymentMode === 'qr' 
+                        ? 'bg-[#49bace] text-white' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <QrCode size={16} />
+                    QR Code
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormData({ ...formData, paymentMode: 'account' })}
+                    className={`flex-1 py-3 px-4 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${
+                      formData.paymentMode === 'account' 
+                        ? 'bg-[#49bace] text-white' 
+                        : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    <CreditCard size={16} />
+                    Account Details
+                  </button>
+                </div>
+                <p className={`text-[10px] mt-2 ${theme.textDim}`}>
+                  📌 Select what to show on payment page - QR Code or Bank Account Details
+                </p>
+              </div>
+
+              {/* Account Details Section */}
+              {formData.paymentMode === 'account' && (
+                <div className="space-y-4 p-4 bg-gray-800/30 rounded-2xl border border-gray-700">
+                  <h4 className={`text-sm font-bold ${theme.textMain} flex items-center gap-2`}>
+                    <Banknote size={16} className="text-[#49bace]" />
+                    Bank Account Details
+                  </h4>
+
+                  {/* Bank Name */}
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
+                      Bank Name
+                    </label>
+                    <input
+                      type="text"
+                      name="bankName"
+                      value={formData.bankName}
+                      onChange={handleInputChange}
+                      placeholder="e.g., State Bank of India"
+                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                    />
+                  </div>
+
+                  {/* Account Holder Name */}
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
+                      Account Holder Name
+                    </label>
+                    <input
+                      type="text"
+                      name="accountName"
+                      value={formData.accountName}
+                      onChange={handleInputChange}
+                      placeholder="e.g., John Doe"
+                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                    />
+                  </div>
+
+                  {/* Account Number */}
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      name="accountNumber"
+                      value={formData.accountNumber}
+                      onChange={handleInputChange}
+                      placeholder="e.g., 1234567890"
+                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                    />
+                  </div>
+
+                  {/* IFSC Code */}
+                  <div>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
+                      IFSC Code
+                    </label>
+                    <input
+                      type="text"
+                      name="ifscCode"
+                      value={formData.ifscCode}
+                      onChange={handleInputChange}
+                      placeholder="e.g., SBIN0001234"
+                      className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                    />
+                  </div>
+
+                  {/* Min & Max Amount */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
+                        Min Amount (₹)
+                      </label>
+                      <input
+                        type="number"
+                        name="minAmount"
+                        value={formData.minAmount}
+                        onChange={handleInputChange}
+                        placeholder="100"
+                        className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                      />
+                    </div>
+                    <div>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-1.5 ${theme.textDim}`}>
+                        Max Amount (₹)
+                      </label>
+                      <input
+                        type="number"
+                        name="maxAmount"
+                        value={formData.maxAmount}
+                        onChange={handleInputChange}
+                        placeholder="50000"
+                        className={`w-full ${theme.innerCard} border ${theme.border} rounded-xl py-2.5 px-3 text-sm font-bold ${theme.textMain} focus:border-[#49bace] outline-none transition-all`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-6 sm:mt-8">
