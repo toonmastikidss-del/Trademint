@@ -657,31 +657,93 @@ const QRManagement = ({ theme, isDarkMode }) => {
 
                     {qrCode ? (
                       <div className="space-y-4">
-                        <div className="flex justify-center">
-                          <img 
-                            src={qrCode.qrImage && qrCode.qrImage.startsWith('data:') ? qrCode.qrImage : `${API_CONFIG.BASE_URL}${qrCode.qrImage}`}
-                            alt={`${method.name} QR`}
-                            className="w-32 h-32 object-contain border-2 border-gray-700 rounded-xl"
-                            onError={(e) => {
-                              // console.error('Failed to load QR image:', qrCode.qrImage);
-                              e.target.style.display = 'none';
-                            }}
-                          />
-                        </div>
-                        <div className="text-center">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            qrCode.isActive 
-                              ? 'bg-green-500/10 text-green-400' 
-                              : 'bg-rose-500/10 text-rose-400'
-                          }`}>
-                            {qrCode.isActive ? 'Active' : 'Inactive'}
-                          </span>
-                        </div>
-                        {qrCode.upiId && (
-                          <div className="text-center">
-                            <p className={`text-xs ${theme.textDim}`}>UPI ID: {qrCode.upiId}</p>
-                          </div>
+                        {qrCode.paymentMode === 'qr' ? (
+                          // QR Code Preview
+                          <>
+                            <div className="flex justify-center">
+                              <img 
+                                src={qrCode.qrImage && qrCode.qrImage.startsWith('data:') ? qrCode.qrImage : `${API_CONFIG.BASE_URL}${qrCode.qrImage}`}
+                                alt={`${method.name} QR`}
+                                className="w-32 h-32 object-contain border-2 border-gray-700 rounded-xl"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            </div>
+                            <div className="text-center">
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                qrCode.isActive 
+                                  ? 'bg-green-500/10 text-green-400' 
+                                  : 'bg-rose-500/10 text-rose-400'
+                              }`}>
+                                {qrCode.isActive ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                            {qrCode.upiId && (
+                              <div className="text-center">
+                                <p className={`text-xs ${theme.textDim}`}>UPI ID: {qrCode.upiId}</p>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          // Bank Account Preview
+                          <>
+                            <div className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 rounded-xl p-4 space-y-3">
+                              <div className="flex items-center justify-center gap-2 mb-3">
+                                <CreditCard size={20} className="text-purple-400" />
+                                <p className={`text-sm font-bold ${theme.textMain}`}>Bank Account Details</p>
+                              </div>
+                              
+                              {qrCode.bankName && (
+                                <div className="flex items-center justify-between">
+                                  <span className={`text-xs ${theme.textDim}`}>Bank:</span>
+                                  <span className={`text-xs font-bold ${theme.textMain}`}>{qrCode.bankName}</span>
+                                </div>
+                              )}
+                              
+                              {qrCode.accountName && (
+                                <div className="flex items-center justify-between">
+                                  <span className={`text-xs ${theme.textDim}`}>Account:</span>
+                                  <span className={`text-xs font-bold ${theme.textMain}`}>{qrCode.accountName}</span>
+                                </div>
+                              )}
+                              
+                              {qrCode.accountNumber && (
+                                <div className="flex items-center justify-between">
+                                  <span className={`text-xs ${theme.textDim}`}>A/C No:</span>
+                                  <span className={`text-xs font-bold ${theme.textMain} tracking-wider`}>{qrCode.accountNumber}</span>
+                                </div>
+                              )}
+                              
+                              {qrCode.ifscCode && (
+                                <div className="flex items-center justify-between">
+                                  <span className={`text-xs ${theme.textDim}`}>IFSC:</span>
+                                  <span className={`text-xs font-bold ${theme.textMain}`}>{qrCode.ifscCode}</span>
+                                </div>
+                              )}
+                              
+                              {(qrCode.minAmount || qrCode.maxAmount) && (
+                                <div className="flex items-center justify-between pt-2 border-t border-purple-500/20">
+                                  <span className={`text-xs ${theme.textDim}`}>Limits:</span>
+                                  <span className={`text-xs font-bold text-green-400`}>
+                                    ₹{qrCode.minAmount || 0} - ₹{qrCode.maxAmount || 0}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                            
+                            <div className="text-center">
+                              <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                                qrCode.isActive 
+                                  ? 'bg-green-500/10 text-green-400' 
+                                  : 'bg-rose-500/10 text-rose-400'
+                              }`}>
+                                {qrCode.isActive ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                          </>
                         )}
+                        
                         <div className="text-center text-[10px] text-gray-500">
                           Last updated: {new Date(qrCode.lastUpdated).toLocaleString()}
                           {qrCode.lastUpdatedBy?.name && (
@@ -691,14 +753,29 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       </div>
                     ) : (
                       <div className="text-center py-8">
-                        <QrCode size={48} className={`${theme.textDim} mx-auto mb-3 opacity-30`} />
-                        <p className={`text-sm ${theme.textDim}`}>No QR code configured</p>
-                        <button
-                          onClick={() => openEditModal()}
-                          className="mt-3 text-[#49bace] text-xs font-bold hover:underline"
-                        >
-                          Add QR Code
-                        </button>
+                        {formType === 'account' ? (
+                          <>
+                            <CreditCard size={48} className={`${theme.textDim} mx-auto mb-3 opacity-30`} />
+                            <p className={`text-sm ${theme.textDim}`}>No bank account configured</p>
+                            <button
+                              onClick={() => openEditModal()}
+                              className="mt-3 text-[#49bace] text-xs font-bold hover:underline"
+                            >
+                              Add Bank Account
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <QrCode size={48} className={`${theme.textDim} mx-auto mb-3 opacity-30`} />
+                            <p className={`text-sm ${theme.textDim}`}>No QR code configured</p>
+                            <button
+                              onClick={() => openEditModal()}
+                              className="mt-3 text-[#49bace] text-xs font-bold hover:underline"
+                            >
+                              Add QR Code
+                            </button>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>
