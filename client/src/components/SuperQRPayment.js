@@ -209,7 +209,7 @@ const SuperQRPayment = () => {
               </div>
             ) : qrCodeData && qrCodeData.qrImage ? (
               <img 
-                src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
+                src={qrCodeData.qrImage.startsWith('data:') ? qrCodeData.qrImage : `${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
                 alt="Super QR Code" 
                 className="w-full h-full object-contain"
                 onError={(e) => {

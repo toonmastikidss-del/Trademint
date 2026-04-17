@@ -82,55 +82,44 @@ const QRManagement = ({ theme, isDarkMode }) => {
     }
   };
 
-  // Handle file upload
+  // Handle file upload - Convert to Base64 for permanent database storage
   const handleFileUpload = async (file) => {
-    console.log('🚀 handleFileUpload called with file:', file);
+    // console.log('🚀 handleFileUpload called with file:', file);
     if (!file) {
       showAlert('No file selected', 'error');
       return false;
     }
     
-    const formDataObj = new FormData();
-    formDataObj.append('qrImage', file);
-    formDataObj.append('paymentMethod', formData.paymentMethod);
-    formDataObj.append('upiId', formData.upiId || '');
-    
-    console.log('📋 Form data:', {
-      paymentMethod: formData.paymentMethod,
-      upiId: formData.upiId,
-    });
-    
-    // Get admin data from localStorage
-    const adminData = JSON.parse(localStorage.getItem('adminData'));
-    console.log('👤 Admin data from localStorage:', adminData);
-    
-    // Use the ID from adminData (this is the correct admin ID)
-    const adminId = adminData?.id || adminData?._id || adminData?.admin?._id || adminData?.admin?.id;
-    console.log('🔑 Extracted adminId:', adminId);
-    
-    if (!adminId) {
-      console.error('❌ Admin ID not found in localStorage');
-      showAlert('Admin authentication error. Please log in again.', 'error');
-      return false;
-    }
-    
-    formDataObj.append('adminId', adminId);
-    
     try {
-      const adminToken = localStorage.getItem('adminToken');
-      console.log('🔐 Admin token:', adminToken ? 'Present' : 'Missing');
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
       
-      console.log('📤 Sending upload request to server...');
-      
-      // Make the API call
-      const response = await axios.post(`${API_CONFIG.BASE_URL}/api/qr/qrcodes/upload`, formDataObj, {
-        headers: { 
-          Authorization: `Bearer ${adminToken}`
-          // Don't set Content-Type - axios will set it automatically with boundary for FormData
-        }
+      await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
       });
       
-      console.log('✅ Upload response:', response.data);
+      const base64Data = reader.result;
+      
+      // Send base64 data to server (not file upload)
+      const adminToken = localStorage.getItem('adminToken');
+      const adminData = JSON.parse(localStorage.getItem('adminData'));
+      const adminId = adminData?.id || adminData?._id || adminData?.admin?._id || adminData?.admin?.id;
+      
+      if (!adminId) {
+        showAlert('Admin authentication error. Please log in again.', 'error');
+        return false;
+      }
+      
+      const response = await axios.post(`${API_CONFIG.BASE_URL}/api/qr/qrcodes/update`, {
+        paymentMethod: formData.paymentMethod,
+        upiId: formData.upiId || '',
+        qrImage: base64Data, // Base64 data directly
+        adminId
+      }, {
+        headers: { Authorization: `Bearer ${adminToken}` }
+      });
       
       if (response.data && response.data.message) {
         showAlert(response.data.message, 'success');
@@ -146,9 +135,9 @@ const QRManagement = ({ theme, isDarkMode }) => {
       setShowEditModal(false);
       return true;
     } catch (error) {
-      console.error('❌ Error uploading file:', error);
-      console.error('Response data:', error.response?.data);
-      console.error('Response status:', error.response?.status);
+      // console.error('❌ Error uploading file:', error);
+      // console.error('Response data:', error.response?.data);
+      // console.error('Response status:', error.response?.status);
       
       // Handle 429 Too Many Requests
       if (error.response?.status === 429) {
@@ -417,7 +406,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
                           <td className="py-4 px-4">
                             {qrCode ? (
                               <img 
-                                src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}`}
+                                src={qrCode.qrImage.startsWith('data:') ? qrCode.qrImage : `${API_CONFIG.BASE_URL}${qrCode.qrImage}`}
                                 alt={`${method.name} QR`}
                                 className="w-16 h-16 object-contain border border-gray-700 rounded-lg"
                                 onError={(e) => {
@@ -553,7 +542,7 @@ const QRManagement = ({ theme, isDarkMode }) => {
                       <div className="space-y-4">
                         <div className="flex justify-center">
                           <img 
-                            src={`${API_CONFIG.BASE_URL}${qrCode.qrImage}`}
+                            src={qrCode.qrImage.startsWith('data:') ? qrCode.qrImage : `${API_CONFIG.BASE_URL}${qrCode.qrImage}`}
                             alt={`${method.name} QR`}
                             className="w-32 h-32 object-contain border-2 border-gray-700 rounded-xl"
                             onError={(e) => {

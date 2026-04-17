@@ -209,7 +209,7 @@ const UmoneyQRPayment = () => {
               </div>
             ) : qrCodeData && qrCodeData.qrImage ? (
               <img 
-                src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
+                src={qrCodeData.qrImage.startsWith('data:') ? qrCodeData.qrImage : `${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
                 alt="Umoney QR Code" 
                 className="w-full h-full object-contain"
                 onError={(e) => {

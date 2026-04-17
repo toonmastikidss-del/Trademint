@@ -316,7 +316,7 @@ const UPIQRPayment = () => {
               ) : qrCodeData && qrCodeData.qrImage ? (
                 <img
                   key={qrCodeData.qrImage} // Force re-render when QR changes
-                  src={`${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
+                  src={qrCodeData.qrImage.startsWith('data:') ? qrCodeData.qrImage : `${API_CONFIG.BASE_URL}${qrCodeData.qrImage}`}
                   alt="QR Code"
                   className="w-full h-full object-contain"
                   crossOrigin="anonymous"
