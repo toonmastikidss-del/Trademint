@@ -291,8 +291,15 @@ router.get('/user/:userId', authenticateToken, async (req, res) => {
 // Get all withdrawal requests (for admin)
 router.get('/', authenticateToken, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (user.status !== 'Admin') {
+    // Try to find user by the token ID (could be admin._id or user._id)
+    let user = await User.findById(req.user.id);
+    
+    // If not found, try to find by phone (admin username) and check if Admin
+    if (!user && req.user.username) {
+      user = await User.findOne({ phone: req.user.username, status: 'Admin' });
+    }
+    
+    if (!user || user.status !== 'Admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
     
@@ -301,7 +308,7 @@ router.get('/', authenticateToken, async (req, res) => {
     
     res.json(requests);
   } catch (error) {
-    // console.error('Error fetching withdrawal requests:', error);
+    console.error('Error fetching withdrawal requests:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -312,8 +319,15 @@ router.put('/status/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { action } = req.body;
     
-    const adminUser = await User.findById(req.user.id);
-    if (adminUser.status !== 'Admin') {
+    // Try to find admin user by the token ID (could be admin._id or user._id)
+    let adminUser = await User.findById(req.user.id);
+    
+    // If not found, try to find by phone (admin username) and check if Admin
+    if (!adminUser && req.user.username) {
+      adminUser = await User.findOne({ phone: req.user.username, status: 'Admin' });
+    }
+    
+    if (!adminUser || adminUser.status !== 'Admin') {
       return res.status(403).json({ error: 'Admin access required' });
     }
     

@@ -925,15 +925,21 @@ const AdminPanel = () => {
     try {
       setLoadingWithdrawalRequests(true);
       const adminToken = localStorage.getItem('adminToken');
+      console.log('🔄 Fetching withdrawal requests...');
+      console.log('Token exists:', !!adminToken);
+      
       const response = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
         }
       });
       
+      console.log('✅ Withdrawal requests fetched:', response.data.length, 'requests');
+      console.log('Requests data:', response.data);
       setWithdrawalRequests(response.data);
     } catch (err) {
-      console.error('Error fetching withdrawal requests:', err);
+      console.error('❌ Error fetching withdrawal requests:', err);
+      console.error('Error response:', err.response?.data);
       setWithdrawalRequests([]);
     } finally {
       setLoadingWithdrawalRequests(false);
@@ -945,6 +951,8 @@ const AdminPanel = () => {
     try {
       setLoadingApprovedWithdrawals(true);
       const adminToken = localStorage.getItem('adminToken');
+      console.log('🔄 Fetching approved withdrawals...');
+      
       const response = await axios.get(`${API_CONFIG.BASE_URL}/api/withdrawal`, {
         headers: {
           'Authorization': `Bearer ${adminToken}`
@@ -953,9 +961,12 @@ const AdminPanel = () => {
       
       // Filter for approved withdrawals
       const approved = response.data.filter(request => request.status === 'approved');
+      console.log('✅ Approved withdrawals fetched:', approved.length, 'approved');
+      console.log('Approved data:', approved);
       setApprovedWithdrawals(approved);
     } catch (err) {
-      console.error('Error fetching approved withdrawals:', err);
+      console.error('❌ Error fetching approved withdrawals:', err);
+      console.error('Error response:', err.response?.data);
       setApprovedWithdrawals([]);
     } finally {
       setLoadingApprovedWithdrawals(false);
@@ -1058,6 +1069,8 @@ const AdminPanel = () => {
   const handleWithdrawalAction = async (requestId, action) => {
     try {
       const adminToken = localStorage.getItem('adminToken');
+      console.log('🔄 Processing withdrawal action:', { requestId, action: action === 1 ? 'APPROVE' : 'REJECT' });
+      
       const response = await axios.put(`${API_CONFIG.BASE_URL}/api/withdrawal/status/${requestId}`, 
         { action }, 
         { 
@@ -1067,6 +1080,8 @@ const AdminPanel = () => {
           } 
         }
       );
+      
+      console.log('✅ Withdrawal action successful:', response.data);
       
       // Update the request status in the local state
       setWithdrawalRequests(prevRequests => 
@@ -1089,7 +1104,8 @@ const AdminPanel = () => {
         fetchWithdrawalRequests();
       }, 1000);
     } catch (error) {
-      console.error('Error updating withdrawal request:', error);
+      console.error('❌ Error updating withdrawal request:', error);
+      console.error('Error response:', error.response?.data);
       alert(`Failed to ${action === 1 ? 'approve' : 'reject'} withdrawal request`);
     }
   };
